@@ -216,6 +216,7 @@ compile_repo
   → gold        (atomic star schema)
   → semantic    (roll-up views)
   → quality     (assertions + data-quality summary)
+  → security    (RLS + CLS governance showcase: self-contained staff_directory)
   → publish_run_summary   (BigQuery query over sem_airport_operations_daily)
 ```
 
@@ -298,8 +299,14 @@ The demo uses two external tables, to contrast a good and a questionable use:
 - Assertions in the `quality` stage are real gates; anomalies are quarantined in
   silver so the pipeline stays green while `gold_data_quality_summary` surfaces
   what was caught.
+- Fine-grained access control is shown in the `security` stage: a self-contained
+  `airport_governance.staff_directory` with **row-level security** (`ROW ACCESS
+  POLICY`) and **column-level security / masking** (SQL `DATA_POLICY`), all in
+  pure Dataform SQLX. It is isolated from the pipeline (nothing reads it) so its
+  policies cannot affect the medallion flow.
 - A caveat: Spark `CALL`s and remote-model calls may not produce perfect
   automatic lineage for every hop; document boundaries where needed.
 
-See [`roadmap.md`](roadmap.md) for governance extensions (RLS/CLS, masking),
-streaming, continuous queries, and automated data insights.
+See [`roadmap.md`](roadmap.md) for further governance extensions (RLS/CLS on
+pipeline tables, authorized views), streaming, continuous queries, and automated
+data insights.

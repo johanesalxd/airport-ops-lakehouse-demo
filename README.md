@@ -126,6 +126,7 @@ medallion layer (or a setup step), so the task list *is* the architecture.
 | `run_gold` | Builds the **atomic star schema** (3 dims, 3 facts); quarantines orphan records | Dataform SQL | `dim_*`, `fct_*` |
 | `run_semantic` | Query-time roll-up **views** — no data materialised | BigQuery views | 3 `sem_*` views |
 | `run_quality` | Runs assertions as **gates** + writes the data-quality summary | Dataform assertions | `gold_data_quality_summary`, assertion results |
+| `run_security` | Governance showcase: builds the self-contained `staff_directory` and attaches RLS + CLS/masking policies (independent of the pipeline) | Dataform `ROW ACCESS POLICY` + `DATA_POLICY` | `airport_governance.staff_directory`, row/data policies |
 | `publish_run_summary` | Smoke-tests that the semantic layer is queryable | `BigQueryInsertJob` | Query job in BQ history |
 
 ### 3. What success looks like
@@ -211,7 +212,7 @@ bash scripts/upload_demo_data.sh 3 42
 
 # 4. Run the pipeline: trigger the `airport_ops_lakehouse` DAG in Composer.
 #    It compiles the Dataform repo and runs it stage by stage:
-#    setup → ingestion → bronze → silver → gold → semantic → quality
+#    setup → ingestion → bronze → silver → gold → semantic → quality → security
 
 # 5. (Optional) Auto-generate BigQuery data insights — AI descriptions, suggested
 #    questions + SQL, and a dataset relationship graph — over the built layers:
@@ -243,8 +244,12 @@ Gemini enrichment in `airport_silver.slv_customer_feedback_enriched`, and
 | Lineage | BigQuery / Dataplex lineage from raw → gold |
 | Cost control | small synthetic volumes, partition/cluster, teardown script |
 
-**Not covered (intentionally — see the roadmap):** row-/column-level security and
-masking, managed data quality (Dataplex auto DQ), Pub/Sub streaming ingestion,
+**Covered as a governance showcase:** row-level + column-level security and
+masking (the `security` stage — a self-contained `staff_directory` table with RLS
+and SQL `DATA_POLICY` masking).
+
+**Not covered (intentionally — see the roadmap):** managed data quality
+(Dataplex auto DQ), Pub/Sub streaming ingestion,
 BigQuery continuous queries, conversational analytics / data agents, vector
 search & embeddings, an Iceberg open-table-format variant, a BI dashboard, data
 sharing (Analytics Hub), and Dataform CI/CD environments. These are documented as

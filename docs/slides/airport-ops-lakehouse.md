@@ -134,7 +134,7 @@ style: |
 ![diagram w:1120](assets/dag-stages.svg)
 
 - One Composer DAG; each stage = a Dataform tag = a **medallion layer**.
-- Setup → ingestion → bronze → silver → gold → semantic → quality.
+- Setup → ingestion → bronze → silver → gold → semantic → quality → security.
 
 <span class="live">LIVE</span> &nbsp; Trigger `airport_ops_lakehouse` and watch the stages go green in order.
 
