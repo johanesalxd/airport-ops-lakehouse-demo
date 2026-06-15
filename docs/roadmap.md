@@ -85,6 +85,21 @@ Point Looker (or Looker Studio) at the `airport_semantic` views — the demo's
 "swap the mini semantic layer for the real one" payoff (see
 [`design-philosophy.md`](design-philosophy.md)).
 
+## 6. Public-release prep
+
+Today the runtime config (project id, region, connection names, service-account
+emails) is hardcoded for the demo project, so the live run stays simple. Before
+open-sourcing:
+
+- Parameterise the Composer DAG (`PROJECT_ID`, `REGION`, `REPOSITORY_ID`) via
+  Airflow Variables / environment variables instead of module constants.
+- Parameterise `workflow_settings.yaml` vars (or override them per-run from the
+  DAG's `code_compilation_config.vars`).
+- Replace the concrete values in `.env.example` and the doc examples with
+  placeholders (`your-project-id`, `YOUR_PROJECT_NUMBER`, …).
+- Scrub connection **service-account emails** from `.env.example`; have
+  `bootstrap.sh` auto-discover them instead.
+
 ---
 
 Official documentation for all of the above is mapped in

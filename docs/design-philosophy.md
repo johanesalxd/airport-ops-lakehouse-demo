@@ -20,15 +20,25 @@ refined layers. Each layer has one job, and data only ever flows one way.
 raw files → BRONZE → SILVER → GOLD → (semantic layer)
 ```
 
+As defined by both [Google Cloud](https://cloud.google.com/discover/what-is-medallion-architecture)
+and [Databricks](https://learn.microsoft.com/en-us/azure/databricks/lakehouse/medallion),
+the layers map to data *quality and structure*: bronze = raw ingestion, silver =
+cleaned/validated/conformed, gold = dimensional modelling and business-ready
+consumption. Following it is a recommended best practice, not a requirement.
+
 ### Bronze — "land it faithfully"
 
-- **Job:** capture the source data as-is, with typing and **ingestion metadata**
-  (`_batch_id`, `_source_file`, `_source_format`, `_ingested_at`, `_record_hash`).
+- **Job:** capture the source data as-is, with **ingestion metadata**
+  (`_batch_id`, `_source_file`, `_source_format`, `_ingested_at`, `_record_hash`)
+  — the docs call for provenance columns such as `_metadata.file_name` here.
 - **Rule:** do *not* apply business logic here. Bronze is the reproducible,
   auditable record of what arrived. If a downstream layer is wrong, you can
   always rebuild it from bronze without re-reading the source.
 - **In this demo:** `airport_bronze.brz_*`, one table per source, fed by native
-  loads, the BigLake external table, and the Spark stored procedures.
+  loads, the BigLake external table, and the Spark stored procedures. Note we
+  *type* bronze (a BigQuery-flavoured choice for a clean demo); the strictest
+  reading of the pattern keeps fields as raw strings/`VARIANT` to survive schema
+  drift. We preserve raw fidelity either way — no rows are dropped or reshaped.
 
 ### Silver — "make it trustworthy and conformed"
 
@@ -59,21 +69,31 @@ raw files → BRONZE → SILVER → GOLD → (semantic layer)
 
 ---
 
-## Part 2 — Gold is a star schema, NOT a semantic layer
+## Part 2 — Gold as an atomic star schema (and where aggregation lives)
 
 This is the design decision people argue about, so it is worth being precise.
 It also answers the "Gold Layer vs Headless Semantic Layer" critique directly.
 
-### TL;DR
+### What the canonical definition actually says
 
-- **A semantic layer is a query generator, not a transformation engine.** It
-  takes a request ("daily delay rate by terminal") and generates SQL against a
-  clean model *at query time*. It does **not** clean, conform, or reshape data.
-- **Heavy transformation belongs in the ELT layer (Dataform).** Cleaning, typing,
-  dedup, conforming, business rules — done once, materialised as an **atomic star
-  schema** in gold.
-- **The mart should be at the finest grain possible.** Roll-ups are the semantic
-  layer's job, computed on read. Don't pre-aggregate into report-specific tables.
+Per the docs, the gold layer does **two** things: **dimensional modelling**
+*and* **aggregation**.
+
+- Databricks: *"the gold layer models your data for reporting and analytics using
+  a dimensional model"* and *"consists of aggregated data tailored for analytics
+  and reporting."*
+- Google Cloud: the gold layer *"utilises **both** aggregated marts and star
+  schemas."*
+
+So a star schema in gold is canonical, and so are pre-aggregated marts. Both are
+valid. The question is not "which one is correct" — it is **where you let
+aggregation live.**
+
+### Our deliberate choice
+
+We keep gold at **atomic, dimensional (star-schema) grain** and **delegate
+aggregation to a separate semantic layer**, instead of materialising
+pre-aggregated, one-table-per-dashboard marts in gold.
 
 ```
 Dataform (transform)                         Semantic layer (roll-up)
@@ -82,23 +102,29 @@ bronze → silver → gold (atomic star)   -->   airport_semantic.* VIEWS
                                              (or Looker / AtScale / Cube)
 ```
 
-### Why not pre-aggregated gold marts?
+This is an opinionated stance, aligned with the **headless semantic layer**
+position. The reasoning:
 
-A common legacy pattern builds gold as physically pre-aggregated, denormalised,
-one-table-per-dashboard marts. The problems:
+- **A semantic layer is a query generator, not a transformation engine.** It
+  takes a request ("daily delay rate by terminal") and generates SQL against a
+  clean model *at query time*; it does not clean, conform, or reshape data. That
+  job stays in Dataform (cleaning, typing, dedup, conforming, business rules —
+  done once, materialised as the atomic star schema).
+- **Keeping the finest grain keeps options open.** Pre-aggregating to, say,
+  hourly summaries discards the atomic detail (timestamps, variance) that AI/ML
+  and ad-hoc root-cause analysis need. You can always roll up from atomic; you
+  cannot drill down from a pre-aggregate.
+- **It keeps the platform agile.** With pre-aggregated marts, every new question
+  tends to need a new pipeline/table — the "request → wait → build" cycle.
+- **It is semantic-layer ready.** Headless engines map metrics over granular,
+  conformed star schemas; mapping them over already-aggregated tables loses
+  dynamic grain, metric inheritance, and the universal API.
 
-- **It bakes business logic into rigid pipelines.** Every new question needs a
-  new pipeline/table — the "request → wait → build" cycle.
-- **It destroys grain.** Once baggage events are rolled up to hourly summaries,
-  the atomic detail (timestamps, variance) is gone — AI/ML and ad-hoc root-cause
-  analysis hit a wall.
-- **A semantic layer can't sit on top of it.** Headless engines map metrics over
-  **granular, conformed star schemas**. Map them over already-aggregated tables
-  and you lose dynamic grain, metric inheritance, and the universal API.
-
-So gold here is an **atomic conformed star schema**, and roll-ups are pushed into
-a logical view layer. That keeps the platform agile and ready for a real semantic
-layer.
+To be clear about the trade-off: the canonical pattern of materialising aggregates
+in gold (e.g. a `weekly_sales` materialized view) is perfectly valid and is often
+done for performance. We push that responsibility down into the semantic layer
+(and, in production, let it cache/aggregate-aware as needed) so the warehouse
+keeps one atomic source of truth rather than many report-specific copies.
 
 ### What "atomic star schema" means here
 
@@ -152,3 +178,16 @@ Dataform is the **analytics-engineering / transformation** layer that produces
 the clean atomic models the semantic layer sits on. It is not a metrics engine.
 For what Dataform *is* (and when to use Spark/Python instead), see
 [`why-dataform-not-python.md`](why-dataform-not-python.md).
+
+---
+
+## Sources
+
+- Google Cloud — *What is medallion architecture?*
+  https://cloud.google.com/discover/what-is-medallion-architecture
+- Google Cloud — *Lakehouse key concepts*
+  https://docs.cloud.google.com/lakehouse/docs/key-concepts
+- Databricks / Azure — *What is the medallion lakehouse architecture?*
+  https://learn.microsoft.com/en-us/azure/databricks/lakehouse/medallion
+- Databricks — *What is Medallion Architecture?*
+  https://www.databricks.com/blog/what-is-medallion-architecture

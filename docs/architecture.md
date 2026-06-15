@@ -126,6 +126,10 @@ atomic facts: `sem_airport_operations_daily`, `sem_terminal_performance_hourly`,
 `sem_passenger_experience`. Why this split exists is the subject of
 [`design-philosophy.md`](design-philosophy.md).
 
+Per Google Cloud guidance, **BigQuery is the recommended engine for serving the
+gold layer** (query performance + concurrency), with Dataform building the SQL
+transformations from silver to gold — which is exactly this design.
+
 ## Two-repo design
 
 A **GCP Dataform repository** (the cloud resource Composer invokes) reads its
