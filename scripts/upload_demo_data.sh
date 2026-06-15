@@ -13,14 +13,18 @@ DAYS="${1:-3}"
 SEED="${2:-42}"
 OUT_DIR="./out"
 
+# Start from a clean local staging dir so leftover files from an earlier format
+# (e.g. customer_feedback.json before the switch to .jsonl) are not re-uploaded by
+# rsync, which does not delete extras at the destination.
+echo ">> Resetting local staging dir ${OUT_DIR}"
+rm -rf "${OUT_DIR}"
+
 echo ">> Generating ${DAYS} day(s) of synthetic data (seed=${SEED})"
 python3 scripts/generate_demo_data.py --out-dir "${OUT_DIR}" --days "${DAYS}" --seed "${SEED}"
 
-# Clean up stale per-source files from earlier formats so the landing zone always
-# matches the current generator output. rsync (below) does not delete extras, and
-# the customer_feedback external table globs *.jsonl -- a leftover *.json from a
-# previous run would just be dead clutter. Add more patterns here if a source's
-# format changes again.
+# Also remove matching stale objects already in the GCS landing zone from prior
+# uploads (rsync only adds/updates, never deletes). Add more patterns here if a
+# source's format changes again.
 echo ">> Cleaning stale objects in landing zone"
 gcloud storage rm "gs://${RAW_BUCKET}/raw/customer_feedback/**/customer_feedback.json" 2>/dev/null \
   && echo "   removed stale customer_feedback.json" \

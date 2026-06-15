@@ -202,6 +202,26 @@ open-sourcing:
   `connections.delegate` when creating resources `WITH CONNECTION`). For a shared
   project, grant `connectionAdmin` **per-connection** (resource-level
   setIamPolicy on the Spark/Gemini/BigLake connections) instead.
+- **Make `teardown.sh` a complete inverse of `bootstrap.sh`.** Today teardown
+  reliably deletes the 7 datasets (and everything inside them), the `raw/` data,
+  and the Dataform repository — which is enough to enable a clean rebuild (and
+  notably drops `airport_ops_control`, so the legacy managed `raw_customer_feedback`
+  cannot linger and break the external-table DDL on a fresh run). But it does not
+  fully reverse bootstrap:
+    - It does **not delete the Dataform service account** (`dataform-airport@…`),
+      even though the script header claims it does — fix the code or the comment.
+    - It revokes **none of the ~13 IAM bindings** bootstrap adds (execution SA
+      project roles, Gemini/Spark connection-SA roles, the Dataform service-agent
+      token-creator grant, and the Composer SA's `dataform.admin` +
+      `serviceAccountUser`). Either revoke them on teardown or document them as
+      intentionally shared (like the connections already are).
+    - It clears only `gs://…/raw` data, leaving the **bucket** itself; and it does
+      **not remove the uploaded DAG** from the Composer DAG bucket, so the DAG
+      stays registered in Airflow.
+    - Every destructive step is `… 2>/dev/null && echo ok || echo skip`, which
+      **swallows failures** (teardown reports success even if nothing was deleted).
+      Surface errors, and add `--force` to `dataform repositories delete` so it
+      still succeeds when the repo has workspaces/release configs.
 
 ---
 
