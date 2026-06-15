@@ -1,0 +1,15 @@
+%%{init: {"theme":"base","themeVariables":{"fontSize":"22px","fontFamily":"Helvetica,Arial,sans-serif","lineColor":"#7a7a7a","clusterBkg":"#f7f9fc","clusterBorder":"#c9d6ea"}}}%%
+flowchart LR
+  RAW["raw files"] --> BRZ["BRONZE<br/><b>land it faithfully</b><br/>typed + ingestion metadata"]
+  BRZ --> SLV["SILVER<br/><b>make it trustworthy</b><br/>clean · conform · enrich · quarantine"]
+  SLV --> GOLD["GOLD<br/><b>model for consumption</b><br/>atomic Kimball star schema"]
+  GOLD --> SEM["SEMANTIC<br/><b>roll up on read</b><br/>query-time views"]
+
+  classDef bronze fill:#f6e4d2,stroke:#b5793c,color:#4a2f17;
+  classDef silver fill:#e6ebf0,stroke:#8a99a8,color:#2f3a45;
+  classDef gold fill:#fbf0c9,stroke:#c9a227,color:#5c4a0f;
+  classDef sem fill:#e7f0ff,stroke:#4d7cfe,color:#21366e;
+  class BRZ bronze;
+  class SLV silver;
+  class GOLD gold;
+  class SEM sem;

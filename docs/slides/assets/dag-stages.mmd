@@ -1,0 +1,10 @@
+%%{init: {"theme":"base","themeVariables":{"fontSize":"20px","fontFamily":"Helvetica,Arial,sans-serif","lineColor":"#7a7a7a"}}}%%
+flowchart LR
+  C["compile_repo"] --> SU["setup"] --> IN["ingestion"] --> BR["bronze"] --> SI["silver"] --> GO["gold"] --> SE["semantic"] --> QA["quality"] --> PUB["publish_run_summary"]
+
+  classDef setup fill:#eef1f5,stroke:#8a99a8,color:#2f3a45;
+  classDef med fill:#e7f0ff,stroke:#4d7cfe,color:#21366e;
+  classDef gate fill:#e8f7ee,stroke:#46b06e,color:#1f5e38;
+  class C,SU,IN setup;
+  class BR,SI,GO,SE med;
+  class QA,PUB gate;

@@ -1,0 +1,40 @@
+%%{init: {"theme":"base","themeVariables":{"fontSize":"20px","fontFamily":"Helvetica,Arial,sans-serif","primaryColor":"#eef4ff","primaryBorderColor":"#4d7cfe","lineColor":"#7a7a7a","clusterBkg":"#f7f9fc","clusterBorder":"#c9d6ea"}}}%%
+flowchart LR
+  subgraph SRC["6 synthetic sources"]
+    direction TB
+    A1["flight_schedules · CSV"]
+    A2["flight_events · JSONL"]
+    A3["baggage · Parquet"]
+    A4["passenger_flow · gz CSV"]
+    A5["security_wait · nested JSON"]
+    A6["feedback · NDJSON"]
+  end
+
+  GCS["Cloud Storage<br/>raw landing (dt=YYYY-MM-DD)"]
+
+  subgraph DF["Dataform — transformation"]
+    direction LR
+    BRZ["BRONZE<br/>typed + metadata"] --> SLV["SILVER<br/>conformed + Gemini"] --> GOLD["GOLD<br/>atomic star schema"]
+  end
+
+  subgraph SEM["Semantic layer — views (query-time roll-up)"]
+    direction TB
+    V1["sem_airport_operations_daily"]
+    V2["sem_terminal_performance_hourly"]
+    V3["sem_passenger_experience"]
+  end
+
+  SRC --> GCS --> DF
+  SP["Serverless Spark<br/>stored procs"] -. "messy/compressed" .-> DF
+  EXT["External tables<br/>BigLake Parquet · plain JSON-column"] -. external .-> DF
+  GEM["Gemini remote model<br/>AI.GENERATE_TEXT"] -. enrich .-> SLV
+  GOLD --> SEM
+  GOLD --> QA["assertions +<br/>data-quality summary"]
+  COMP["Cloud Composer (Airflow)"] -. "compiles + invokes by stage" .-> DF
+
+  classDef store fill:#fff5e6,stroke:#e0a64d,color:#5c4316;
+  classDef ai fill:#f0e9ff,stroke:#9a6dfe,color:#3d2a7a;
+  classDef orch fill:#e8f7ee,stroke:#46b06e,color:#1f5e38;
+  class GCS,SP store;
+  class GEM ai;
+  class COMP orch;

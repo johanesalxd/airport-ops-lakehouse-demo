@@ -1,0 +1,23 @@
+%%{init: {"theme":"base","themeVariables":{"fontSize":"21px","fontFamily":"Helvetica,Arial,sans-serif","lineColor":"#7a7a7a","clusterBkg":"#f7f9fc","clusterBorder":"#c9d6ea"}}}%%
+flowchart LR
+  subgraph T["TRANSFORMATION — Dataform (materialised once)"]
+    direction LR
+    B["bronze"] --> S["silver"] --> G["GOLD<br/>atomic star schema<br/>dim_* + fct_*"]
+  end
+
+  subgraph SEM["SEMANTIC LAYER — query-time roll-up (logic defined once)"]
+    direction TB
+    V["BigQuery views<br/><i>just a GROUP BY over the facts</i>"]
+    L["→ swap for Looker / AtScale / Cube<br/>gold underneath does NOT change"]
+    V --- L
+  end
+
+  G ==>|"roll up from atomic"| SEM
+  AI["AI / ML · ad-hoc<br/>root-cause"] -.->|"need the finest grain"| G
+
+  classDef gold fill:#fbf0c9,stroke:#c9a227,color:#5c4a0f;
+  classDef sem fill:#e7f0ff,stroke:#4d7cfe,color:#21366e;
+  classDef ai fill:#f0e9ff,stroke:#9a6dfe,color:#3d2a7a;
+  class G gold;
+  class V,L sem;
+  class AI ai;
