@@ -79,7 +79,10 @@ with models.DAG(
             "git_commitish": GIT_COMMITISH,
             "code_compilation_config": {
                 # Stamp every bronze row with the Airflow run for traceability.
-                "vars": {"batchId": "{{ ds_nodash }}-{{ run_id }}"},
+                # Use run_id (always defined): a schedule=None DAG triggered
+                # manually on Airflow 3 has no data interval, so date macros like
+                # ds_nodash are undefined.
+                "vars": {"batchId": "{{ run_id }}"},
             },
         },
     )
