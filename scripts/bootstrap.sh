@@ -78,6 +78,13 @@ for ROLE in roles/bigquery.dataEditor roles/bigquery.jobUser \
     --condition=None >/dev/null
 done
 
+echo ">> Granting the Dataform service agent token-creator on the execution SA"
+# The Dataform service agent impersonates the execution SA to run workflows.
+DATAFORM_AGENT="service-${PROJECT_NUMBER}@gcp-sa-dataform.iam.gserviceaccount.com"
+gcloud iam service-accounts add-iam-policy-binding "${DATAFORM_SA_EMAIL}" \
+  --member="serviceAccount:${DATAFORM_AGENT}" \
+  --role="roles/iam.serviceAccountTokenCreator" >/dev/null
+
 echo ">> Granting Composer worker SA the Dataform + act-as permissions"
 COMPOSER_SA="$(gcloud composer environments describe "${COMPOSER_ENV}" \
   --location="${REGION}" --format='value(config.nodeConfig.serviceAccount)')"
