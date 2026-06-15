@@ -233,7 +233,7 @@ def gen_security_wait_times(rng: random.Random, d: dt.date):
 
 
 def gen_customer_feedback(rng: random.Random, d: dt.date):
-    """Multilingual feedback array."""
+    """Multilingual feedback records (written as NDJSON, one object per line)."""
     rows = []
     n = 25
     for i in range(n):

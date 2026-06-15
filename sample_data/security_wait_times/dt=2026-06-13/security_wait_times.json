@@ -7,165 +7,51 @@
       "readings": [
         {
           "ts": "2026-06-13T05:00:00",
-          "wait_minutes": 14,
-          "queue_length": 60,
+          "wait_minutes": 17,
+          "queue_length": 12,
           "lanes_open": 8
         },
         {
           "ts": "2026-06-13T06:00:00",
-          "wait_minutes": 8,
-          "queue_length": 131,
-          "lanes_open": 6
+          "wait_minutes": 23,
+          "queue_length": 114,
+          "lanes_open": 4
         },
         {
           "ts": "2026-06-13T07:00:00",
-          "wait_minutes": 12,
-          "queue_length": 77,
-          "lanes_open": 7
+          "wait_minutes": 13,
+          "queue_length": 59,
+          "lanes_open": 4
         },
         {
           "ts": "2026-06-13T08:00:00",
-          "wait_minutes": 19,
-          "queue_length": 152,
-          "lanes_open": 4
-        },
-        {
-          "ts": "2026-06-13T09:00:00",
-          "wait_minutes": 20,
-          "queue_length": 129,
-          "lanes_open": 7
-        },
-        {
-          "ts": "2026-06-13T10:00:00",
-          "wait_minutes": 23,
-          "queue_length": 200,
-          "lanes_open": 2
-        },
-        {
-          "ts": "2026-06-13T11:00:00",
-          "wait_minutes": 3,
-          "queue_length": 30,
+          "wait_minutes": 10,
+          "queue_length": 76,
           "lanes_open": 9
         },
         {
-          "ts": "2026-06-13T12:00:00",
-          "wait_minutes": 2,
-          "queue_length": 36,
-          "lanes_open": 4
-        },
-        {
-          "ts": "2026-06-13T13:00:00",
-          "wait_minutes": 95,
-          "queue_length": 121,
-          "lanes_open": 2
-        },
-        {
-          "ts": "2026-06-13T14:00:00",
-          "wait_minutes": 15,
-          "queue_length": 56,
-          "lanes_open": 4
-        },
-        {
-          "ts": "2026-06-13T15:00:00",
-          "wait_minutes": 22,
-          "queue_length": 82,
-          "lanes_open": 4
-        },
-        {
-          "ts": "2026-06-13T16:00:00",
-          "wait_minutes": 10,
-          "queue_length": 28,
-          "lanes_open": 7
-        },
-        {
-          "ts": "2026-06-13T17:00:00",
-          "wait_minutes": 10,
-          "queue_length": 26,
-          "lanes_open": 7
-        },
-        {
-          "ts": "2026-06-13T18:00:00",
-          "wait_minutes": 23,
-          "queue_length": 171,
-          "lanes_open": 4
-        },
-        {
-          "ts": "2026-06-13T19:00:00",
-          "wait_minutes": 3,
-          "queue_length": 106,
-          "lanes_open": 6
-        },
-        {
-          "ts": "2026-06-13T20:00:00",
-          "wait_minutes": 25,
-          "queue_length": 184,
-          "lanes_open": 5
-        },
-        {
-          "ts": "2026-06-13T21:00:00",
-          "wait_minutes": 15,
-          "queue_length": 172,
-          "lanes_open": 3
-        },
-        {
-          "ts": "2026-06-13T22:00:00",
-          "wait_minutes": 24,
-          "queue_length": 29,
-          "lanes_open": 2
-        }
-      ]
-    },
-    {
-      "checkpoint_id": "chk-T2",
-      "terminal_id": "T2",
-      "readings": [
-        {
-          "ts": "2026-06-13T05:00:00",
-          "wait_minutes": 8,
-          "queue_length": 127,
-          "lanes_open": 3
-        },
-        {
-          "ts": "2026-06-13T06:00:00",
+          "ts": "2026-06-13T09:00:00",
           "wait_minutes": 6,
-          "queue_length": 156,
+          "queue_length": 13,
           "lanes_open": 5
-        },
-        {
-          "ts": "2026-06-13T07:00:00",
-          "wait_minutes": 18,
-          "queue_length": 179,
-          "lanes_open": 9
-        },
-        {
-          "ts": "2026-06-13T08:00:00",
-          "wait_minutes": 2,
-          "queue_length": 7,
-          "lanes_open": 7
-        },
-        {
-          "ts": "2026-06-13T09:00:00",
-          "wait_minutes": 5,
-          "queue_length": 113,
-          "lanes_open": 4
         },
         {
           "ts": "2026-06-13T10:00:00",
-          "wait_minutes": 17,
-          "queue_length": 23,
-          "lanes_open": 5
+          "wait_minutes": 22,
+          "queue_length": 80,
+          "lanes_open": 9
         },
         {
           "ts": "2026-06-13T11:00:00",
-          "wait_minutes": 14,
-          "queue_length": 27,
-          "lanes_open": 3
+          "wait_minutes": 15,
+          "queue_length": 145,
+          "lanes_open": 9
         },
         {
           "ts": "2026-06-13T12:00:00",
-          "wait_minutes": 5,
-          "queue_length": 85,
-          "lanes_open": 7
+          "wait_minutes": 3,
+          "queue_length": 27,
+          "lanes_open": 6
         },
         {
           "ts": "2026-06-13T13:00:00",
@@ -175,57 +61,171 @@
         },
         {
           "ts": "2026-06-13T14:00:00",
-          "wait_minutes": 6,
+          "wait_minutes": 8,
           "queue_length": 169,
+          "lanes_open": 10
+        },
+        {
+          "ts": "2026-06-13T15:00:00",
+          "wait_minutes": 9,
+          "queue_length": 166,
+          "lanes_open": 10
+        },
+        {
+          "ts": "2026-06-13T16:00:00",
+          "wait_minutes": 2,
+          "queue_length": 102,
+          "lanes_open": 7
+        },
+        {
+          "ts": "2026-06-13T17:00:00",
+          "wait_minutes": 17,
+          "queue_length": 144,
+          "lanes_open": 9
+        },
+        {
+          "ts": "2026-06-13T18:00:00",
+          "wait_minutes": 13,
+          "queue_length": 149,
+          "lanes_open": 10
+        },
+        {
+          "ts": "2026-06-13T19:00:00",
+          "wait_minutes": 12,
+          "queue_length": 104,
+          "lanes_open": 6
+        },
+        {
+          "ts": "2026-06-13T20:00:00",
+          "wait_minutes": 7,
+          "queue_length": 11,
+          "lanes_open": 7
+        },
+        {
+          "ts": "2026-06-13T21:00:00",
+          "wait_minutes": 21,
+          "queue_length": 61,
+          "lanes_open": 2
+        },
+        {
+          "ts": "2026-06-13T22:00:00",
+          "wait_minutes": 10,
+          "queue_length": 19,
+          "lanes_open": 9
+        }
+      ]
+    },
+    {
+      "checkpoint_id": "chk-T2",
+      "terminal_id": "T2",
+      "readings": [
+        {
+          "ts": "2026-06-13T05:00:00",
+          "wait_minutes": 18,
+          "queue_length": 96,
+          "lanes_open": 5
+        },
+        {
+          "ts": "2026-06-13T06:00:00",
+          "wait_minutes": 7,
+          "queue_length": 30,
+          "lanes_open": 5
+        },
+        {
+          "ts": "2026-06-13T07:00:00",
+          "wait_minutes": 23,
+          "queue_length": 66,
+          "lanes_open": 6
+        },
+        {
+          "ts": "2026-06-13T08:00:00",
+          "wait_minutes": 19,
+          "queue_length": 193,
+          "lanes_open": 2
+        },
+        {
+          "ts": "2026-06-13T09:00:00",
+          "wait_minutes": 9,
+          "queue_length": 152,
+          "lanes_open": 8
+        },
+        {
+          "ts": "2026-06-13T10:00:00",
+          "wait_minutes": 13,
+          "queue_length": 49,
+          "lanes_open": 4
+        },
+        {
+          "ts": "2026-06-13T11:00:00",
+          "wait_minutes": 9,
+          "queue_length": 156,
+          "lanes_open": 7
+        },
+        {
+          "ts": "2026-06-13T12:00:00",
+          "wait_minutes": 25,
+          "queue_length": 183,
+          "lanes_open": 7
+        },
+        {
+          "ts": "2026-06-13T13:00:00",
+          "wait_minutes": 95,
+          "queue_length": 12,
+          "lanes_open": 7
+        },
+        {
+          "ts": "2026-06-13T14:00:00",
+          "wait_minutes": 20,
+          "queue_length": 149,
           "lanes_open": 4
         },
         {
           "ts": "2026-06-13T15:00:00",
-          "wait_minutes": 4,
-          "queue_length": 140,
-          "lanes_open": 2
+          "wait_minutes": 20,
+          "queue_length": 53,
+          "lanes_open": 9
         },
         {
           "ts": "2026-06-13T16:00:00",
-          "wait_minutes": 21,
-          "queue_length": 171,
+          "wait_minutes": 19,
+          "queue_length": 84,
           "lanes_open": 4
         },
         {
           "ts": "2026-06-13T17:00:00",
-          "wait_minutes": 16,
-          "queue_length": 94,
-          "lanes_open": 5
+          "wait_minutes": 17,
+          "queue_length": 14,
+          "lanes_open": 3
         },
         {
           "ts": "2026-06-13T18:00:00",
-          "wait_minutes": 22,
-          "queue_length": 196,
-          "lanes_open": 4
+          "wait_minutes": 3,
+          "queue_length": 64,
+          "lanes_open": 5
         },
         {
           "ts": "2026-06-13T19:00:00",
-          "wait_minutes": 15,
-          "queue_length": 162,
+          "wait_minutes": 2,
+          "queue_length": 139,
           "lanes_open": 9
         },
         {
           "ts": "2026-06-13T20:00:00",
-          "wait_minutes": 8,
-          "queue_length": 27,
-          "lanes_open": 3
+          "wait_minutes": 2,
+          "queue_length": 89,
+          "lanes_open": 5
         },
         {
           "ts": "2026-06-13T21:00:00",
           "wait_minutes": 6,
-          "queue_length": 197,
-          "lanes_open": 3
+          "queue_length": 92,
+          "lanes_open": 4
         },
         {
           "ts": "2026-06-13T22:00:00",
-          "wait_minutes": 20,
-          "queue_length": 191,
-          "lanes_open": 8
+          "wait_minutes": 12,
+          "queue_length": 20,
+          "lanes_open": 2
         }
       ]
     },
@@ -235,111 +235,111 @@
       "readings": [
         {
           "ts": "2026-06-13T05:00:00",
-          "wait_minutes": 13,
-          "queue_length": 114,
-          "lanes_open": 7
+          "wait_minutes": 6,
+          "queue_length": 155,
+          "lanes_open": 4
         },
         {
           "ts": "2026-06-13T06:00:00",
-          "wait_minutes": 6,
-          "queue_length": 68,
-          "lanes_open": 6
+          "wait_minutes": 5,
+          "queue_length": 139,
+          "lanes_open": 7
         },
         {
           "ts": "2026-06-13T07:00:00",
-          "wait_minutes": 22,
-          "queue_length": 26,
-          "lanes_open": 5
-        },
-        {
-          "ts": "2026-06-13T08:00:00",
-          "wait_minutes": 19,
-          "queue_length": 158,
-          "lanes_open": 6
-        },
-        {
-          "ts": "2026-06-13T09:00:00",
-          "wait_minutes": 24,
-          "queue_length": 11,
-          "lanes_open": 6
-        },
-        {
-          "ts": "2026-06-13T10:00:00",
-          "wait_minutes": 8,
-          "queue_length": 137,
-          "lanes_open": 10
-        },
-        {
-          "ts": "2026-06-13T11:00:00",
-          "wait_minutes": 8,
-          "queue_length": 196,
+          "wait_minutes": 4,
+          "queue_length": 100,
           "lanes_open": 8
         },
         {
-          "ts": "2026-06-13T12:00:00",
+          "ts": "2026-06-13T08:00:00",
+          "wait_minutes": 20,
+          "queue_length": 30,
+          "lanes_open": 7
+        },
+        {
+          "ts": "2026-06-13T09:00:00",
           "wait_minutes": 11,
-          "queue_length": 170,
-          "lanes_open": 2
+          "queue_length": 87,
+          "lanes_open": 4
+        },
+        {
+          "ts": "2026-06-13T10:00:00",
+          "wait_minutes": 7,
+          "queue_length": 192,
+          "lanes_open": 8
+        },
+        {
+          "ts": "2026-06-13T11:00:00",
+          "wait_minutes": 22,
+          "queue_length": 129,
+          "lanes_open": 7
+        },
+        {
+          "ts": "2026-06-13T12:00:00",
+          "wait_minutes": 7,
+          "queue_length": 186,
+          "lanes_open": 10
         },
         {
           "ts": "2026-06-13T13:00:00",
           "wait_minutes": 95,
-          "queue_length": 131,
-          "lanes_open": 8
-        },
-        {
-          "ts": "2026-06-13T14:00:00",
-          "wait_minutes": 5,
-          "queue_length": 66,
-          "lanes_open": 9
-        },
-        {
-          "ts": "2026-06-13T15:00:00",
-          "wait_minutes": 22,
-          "queue_length": 157,
-          "lanes_open": 3
-        },
-        {
-          "ts": "2026-06-13T16:00:00",
-          "wait_minutes": 18,
-          "queue_length": 8,
+          "queue_length": 162,
           "lanes_open": 7
         },
         {
+          "ts": "2026-06-13T14:00:00",
+          "wait_minutes": 9,
+          "queue_length": 175,
+          "lanes_open": 4
+        },
+        {
+          "ts": "2026-06-13T15:00:00",
+          "wait_minutes": 14,
+          "queue_length": 83,
+          "lanes_open": 6
+        },
+        {
+          "ts": "2026-06-13T16:00:00",
+          "wait_minutes": 6,
+          "queue_length": 50,
+          "lanes_open": 2
+        },
+        {
           "ts": "2026-06-13T17:00:00",
-          "wait_minutes": 12,
-          "queue_length": 38,
+          "wait_minutes": 24,
+          "queue_length": 151,
           "lanes_open": 8
         },
         {
           "ts": "2026-06-13T18:00:00",
           "wait_minutes": 20,
-          "queue_length": 112,
-          "lanes_open": 7
-        },
-        {
-          "ts": "2026-06-13T19:00:00",
-          "wait_minutes": 19,
-          "queue_length": 179,
+          "queue_length": 13,
           "lanes_open": 4
         },
         {
+          "ts": "2026-06-13T19:00:00",
+          "wait_minutes": 21,
+          "queue_length": 86,
+          "lanes_open": 5
+        },
+        {
           "ts": "2026-06-13T20:00:00",
-          "wait_minutes": 17,
-          "queue_length": 23,
-          "lanes_open": 2
+          "wait_minutes": 22,
+          "queue_length": 149,
+          "lanes_open": 3
         },
         {
           "ts": "2026-06-13T21:00:00",
-          "wait_minutes": 20,
-          "queue_length": 22,
-          "lanes_open": 2
+          "wait_minutes": 17,
+          "queue_length": 41,
+          "lanes_open": 7
         },
         {
           "ts": "2026-06-13T22:00:00",
-          "wait_minutes": 10,
-          "queue_length": 60,
-          "lanes_open": 2
+          "wait_minutes": 25,
+          "queue_length": 24,
+          "lanes_open": 5
         }
       ]
     },
@@ -349,111 +349,111 @@
       "readings": [
         {
           "ts": "2026-06-13T05:00:00",
-          "wait_minutes": 3,
-          "queue_length": 106,
-          "lanes_open": 10
-        },
-        {
-          "ts": "2026-06-13T06:00:00",
-          "wait_minutes": 11,
-          "queue_length": 165,
-          "lanes_open": 10
-        },
-        {
-          "ts": "2026-06-13T07:00:00",
-          "wait_minutes": 15,
-          "queue_length": 113,
-          "lanes_open": 8
-        },
-        {
-          "ts": "2026-06-13T08:00:00",
-          "wait_minutes": 4,
-          "queue_length": 168,
-          "lanes_open": 10
-        },
-        {
-          "ts": "2026-06-13T09:00:00",
-          "wait_minutes": 19,
-          "queue_length": 162,
+          "wait_minutes": 13,
+          "queue_length": 86,
           "lanes_open": 4
         },
         {
-          "ts": "2026-06-13T10:00:00",
-          "wait_minutes": 10,
-          "queue_length": 26,
+          "ts": "2026-06-13T06:00:00",
+          "wait_minutes": 22,
+          "queue_length": 27,
+          "lanes_open": 7
+        },
+        {
+          "ts": "2026-06-13T07:00:00",
+          "wait_minutes": 16,
+          "queue_length": 7,
           "lanes_open": 6
         },
         {
+          "ts": "2026-06-13T08:00:00",
+          "wait_minutes": 8,
+          "queue_length": 68,
+          "lanes_open": 3
+        },
+        {
+          "ts": "2026-06-13T09:00:00",
+          "wait_minutes": 13,
+          "queue_length": 70,
+          "lanes_open": 3
+        },
+        {
+          "ts": "2026-06-13T10:00:00",
+          "wait_minutes": 25,
+          "queue_length": 5,
+          "lanes_open": 2
+        },
+        {
           "ts": "2026-06-13T11:00:00",
-          "wait_minutes": 4,
-          "queue_length": 135,
-          "lanes_open": 5
+          "wait_minutes": 14,
+          "queue_length": 117,
+          "lanes_open": 8
         },
         {
           "ts": "2026-06-13T12:00:00",
-          "wait_minutes": 6,
-          "queue_length": 142,
-          "lanes_open": 7
+          "wait_minutes": 7,
+          "queue_length": 110,
+          "lanes_open": 9
         },
         {
           "ts": "2026-06-13T13:00:00",
           "wait_minutes": 95,
-          "queue_length": 155,
-          "lanes_open": 3
+          "queue_length": 94,
+          "lanes_open": 10
         },
         {
           "ts": "2026-06-13T14:00:00",
-          "wait_minutes": 11,
-          "queue_length": 183,
-          "lanes_open": 8
+          "wait_minutes": 14,
+          "queue_length": 30,
+          "lanes_open": 9
         },
         {
           "ts": "2026-06-13T15:00:00",
-          "wait_minutes": 25,
-          "queue_length": 66,
-          "lanes_open": 2
+          "wait_minutes": 20,
+          "queue_length": 171,
+          "lanes_open": 5
         },
         {
           "ts": "2026-06-13T16:00:00",
-          "wait_minutes": 9,
-          "queue_length": 27,
-          "lanes_open": 8
+          "wait_minutes": 7,
+          "queue_length": 120,
+          "lanes_open": 3
         },
         {
           "ts": "2026-06-13T17:00:00",
-          "wait_minutes": 5,
-          "queue_length": 121,
+          "wait_minutes": 3,
+          "queue_length": 80,
           "lanes_open": 2
         },
         {
           "ts": "2026-06-13T18:00:00",
-          "wait_minutes": 11,
-          "queue_length": 175,
-          "lanes_open": 4
+          "wait_minutes": 12,
+          "queue_length": 71,
+          "lanes_open": 3
         },
         {
           "ts": "2026-06-13T19:00:00",
-          "wait_minutes": 5,
-          "queue_length": 8,
+          "wait_minutes": 4,
+          "queue_length": 92,
           "lanes_open": 4
         },
         {
           "ts": "2026-06-13T20:00:00",
-          "wait_minutes": 24,
-          "queue_length": 7,
-          "lanes_open": 4
+          "wait_minutes": 14,
+          "queue_length": 46,
+          "lanes_open": 3
         },
         {
           "ts": "2026-06-13T21:00:00",
-          "wait_minutes": 17,
-          "queue_length": 93,
-          "lanes_open": 10
+          "wait_minutes": 19,
+          "queue_length": 28,
+          "lanes_open": 7
         },
         {
           "ts": "2026-06-13T22:00:00",
-          "wait_minutes": 18,
-          "queue_length": 189,
-          "lanes_open": 6
+          "wait_minutes": 21,
+          "queue_length": 162,
+          "lanes_open": 9
         }
       ]
     }
