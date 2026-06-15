@@ -146,8 +146,16 @@ def gen_baggage_events(rng: random.Random, d: dt.date, schedules):
         for _ in range(rng.randint(1, 4)):
             bag_seq += 1
             bag_id = f"bag-{d.isoformat()}-{bag_seq}"
-            base_h = rng.randint(4, 21)
+            # Realistic baggage journey: scans are MINUTES apart (not hours), so the
+            # full check_in -> claim span straddles the 45-min SLA. This yields a
+            # believable mix of late/on-time bags (~1/3 late) instead of every bag
+            # breaching. 4 gaps of ~3-18 min => total journey ~12-72 min.
+            scan_dt = dt.datetime(
+                d.year, d.month, d.day, rng.randint(4, 21), rng.randint(0, 30)
+            )
             for j, scan in enumerate(BAG_SCANS):
+                if j > 0:
+                    scan_dt += dt.timedelta(minutes=rng.randint(3, 18))
                 if rng.random() < 0.1 and scan in ("load", "transfer"):
                     continue  # missing scan -> SLA gap
                 rows.append(
@@ -155,7 +163,7 @@ def gen_baggage_events(rng: random.Random, d: dt.date, schedules):
                         "bag_id": bag_id,
                         "flight_id": fid,
                         "scan_type": scan,
-                        "scan_ts": ts(d, min(base_h + j, 23), rng.randint(0, 59)),
+                        "scan_ts": scan_dt.strftime("%Y-%m-%dT%H:%M:%S"),
                         "terminal_id": rng.choice(TERMINALS),
                         "belt_id": f"belt-{rng.randint(1, 12)}",
                         "status": "ok",

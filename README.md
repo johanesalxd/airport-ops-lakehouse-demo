@@ -78,6 +78,62 @@ connections and IAM, the Composer DAG, Spark procedures, the Gemini model) is in
 
 ---
 
+## How the data flows (follow this during the live demo)
+
+This section is the **mental model** for watching the pipeline run; the
+[`docs/`](#documentation) folder has the deep-dive for anything below.
+
+### 1. The six sources, and how each is ingested
+
+The demo deliberately uses *the right ingestion tool per format* — that variety
+is the point.
+
+| # | Source (synthetic) | Format | Ingested by | Lands in (bronze) |
+|---|---|---|---|---|
+| 1 | `flight_schedules` | CSV | Native BigQuery load | `brz_flight_schedules` |
+| 2 | `flight_events` | NDJSON (`.jsonl`) | Native BigQuery load | `brz_flight_events` |
+| 3 | `baggage_events` | Parquet | **BigLake** external table | `brz_baggage_events` |
+| 4 | `passenger_flow` | Gzip CSV | **Serverless Spark** stored proc | `brz_passenger_flow` |
+| 5 | `security_wait_times` | Nested JSON | **Serverless Spark** stored proc | `brz_security_wait` |
+| 6 | `customer_feedback` | Multilingual JSON | Spark proc **+ Gemini** enrichment | `brz_customer_feedback` |
+
+All six land in Cloud Storage under `dt=YYYY-MM-DD/` partitions first (seeded by
+`scripts/upload_demo_data.sh`).
+
+### 2. What each orchestration task does
+
+The Composer DAG runs these tasks **in order**. Each Dataform stage maps to a
+medallion layer (or a setup step), so the task list *is* the architecture.
+
+| Task | What it does | Key component | What to inspect |
+|---|---|---|---|
+| `compile_repo` | Compiles the Dataform Git repo to an execution graph; stamps `batchId = {{ run_id }}` | Dataform compilation API | Compiled graph in the Dataform UI |
+| `run_setup` | Creates the Gemini remote model + BigLake table, registers the Spark stored procedures | Dataform ops + BQ connections | Model, external table & procs exist |
+| `run_ingestion` | Native loads + CALLs the 3 Spark procs to land all 6 sources | Serverless Spark + BQ loads | The six `brz_*` tables populate |
+| `run_bronze` | Types the raw data and adds ingestion metadata (`_source_format`, `_batch_id`) | Dataform / BigQuery SQL | `brz_*` schema & metadata cols |
+| `run_silver` | Conforms/cleans; **Gemini** translates + classifies multilingual feedback (sentiment, urgency, topic) | `AI.GENERATE_TEXT` | `slv_customer_feedback_enriched` |
+| `run_gold` | Builds the **atomic star schema** (3 dims, 3 facts); quarantines orphan records | Dataform SQL | `dim_*`, `fct_*` |
+| `run_semantic` | Query-time roll-up **views** — no data materialised | BigQuery views | 3 `sem_*` views |
+| `run_quality` | Runs assertions as **gates** + writes the data-quality summary | Dataform assertions | `gold_data_quality_summary`, assertion results |
+| `publish_run_summary` | Smoke-tests that the semantic layer is queryable | `BigQueryInsertJob` | Query job in BQ history |
+
+### 3. What success looks like
+
+- **All 9 tasks green**, in order `compile_repo → … → publish_run_summary`.
+- **Row counts** (3-day seed) roughly: bronze ~123 flights; gold `fct_flight`
+  ~123, `fct_baggage` ~300+, `fct_feedback` ~75.
+- **Semantic views return rows** — `sem_airport_operations_daily` shows a rising
+  `delay_rate` and a believable `late_bag_rate` (~1/3 of bags, not all).
+- **`gold_data_quality_summary` lists the planted anomalies** (missing load scans,
+  extreme security waits, gate double-bookings, negative passenger counts, orphan
+  baggage) — yet the run stays green, because they're *quarantined*, not fatal.
+- **Where to look:** results in the `airport_bronze/silver/gold/semantic`
+  datasets; to debug a failure, open **Dataform → Workflow Execution Logs** (the
+  Airflow task only shows orchestration state — see
+  [`docs/operations.md`](docs/operations.md)).
+
+---
+
 ## Repository layout (two repos)
 
 | Repo | Role |
@@ -174,6 +230,14 @@ Gemini enrichment in `airport_silver.slv_customer_feedback_enriched`, and
 masking, Pub/Sub streaming ingestion, BigQuery continuous queries, automated
 BigQuery data insights, and a BI dashboard. These are documented as next steps in
 [`docs/roadmap.md`](docs/roadmap.md).
+
+> Measured against Google Cloud's
+> [end-to-end data integration](https://cloud.google.com/use-cases/data-integration)
+> and [analytics lakehouse](https://docs.cloud.google.com/architecture/big-data-analytics/analytics-lakehouse)
+> reference patterns, this demo covers the full ingest → transform → model →
+> serve → govern path. The only canonical pieces shown as roadmap (not live) are
+> the **BI/visualization layer** (Looker / Looker Studio) and **conversational
+> analytics** (the BigQuery data agent) on top of the semantic layer.
 
 ---
 

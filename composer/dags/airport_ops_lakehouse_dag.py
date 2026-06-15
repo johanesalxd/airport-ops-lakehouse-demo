@@ -111,11 +111,11 @@ with models.DAG(
         project_id=PROJECT_ID,
         configuration={
             "query": {
+                # SELECT * so this smoke test stays decoupled from the view's
+                # column list (it just proves the semantic layer is queryable).
                 "query": (
-                    "SELECT date_key, total_flights, delay_rate, "
-                    "avg_delay_minutes, total_scheduled_passengers, late_bag_rate "
-                    f"FROM `{PROJECT_ID}.{SEMANTIC_DATASET}.sem_airport_operations_daily` "
-                    "ORDER BY date_key"
+                    f"SELECT * FROM `{PROJECT_ID}.{SEMANTIC_DATASET}."
+                    "sem_airport_operations_daily` ORDER BY date_key"
                 ),
                 "useLegacySql": False,
             }
