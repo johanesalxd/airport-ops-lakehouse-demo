@@ -113,6 +113,7 @@ assertions and the data-quality summary have something to catch.
 | `airport_gold` | atomic star schema (dims + facts) + data-quality summary |
 | `airport_semantic` | semantic roll-up views |
 | `airport_ai` | Gemini remote model |
+| `airport_governance` | RLS/CLS showcase (`staff_directory` + row/data policies) |
 | `dataform_assertions` | assertion results |
 
 Everything is **regional `us-central1`** and must stay co-located with the Spark

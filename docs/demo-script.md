@@ -7,8 +7,10 @@ A "concept then live" runbook for the workshop. Project:
 
 These exist already and are *reused* by the demo (not created by the scripts): the
 three BigQuery connections (Spark, Gemini, BigLake), the Cloud Composer
-environment, the GCP Dataform repository linked to the companion Git repo, and the
-Secret Manager secret holding the Git token. See
+environment, the GCP Dataform repository linked to the companion Git repo, the
+Secret Manager secret holding the Git token, and the **two Google Groups** for the
+RLS/CLS stage (`bq-rls-cls-dataform-admin@…`, `bq-rls-cls-dataform-sales@…` —
+`bootstrap.sh` grants them read roles but cannot create groups). See
 [`architecture.md`](architecture.md) for how they are wired.
 
 ## 0. One-time seed (before the session)
@@ -65,8 +67,8 @@ is called from Dataform for the non-SQL work."
 
 - Open the Composer **`dev-airflow`** Airflow UI → DAG `airport_ops_lakehouse`.
 - Trigger it. Watch the stages: `compile_repo → setup → ingestion → bronze →
-  silver → gold → semantic → quality → publish_run_summary`. The stages are the
-  medallion layers — point that out as it runs.
+  silver → gold → semantic → quality → security → publish_run_summary`. The
+  medallion layers are stages — point that out as it runs.
 - While it runs, open the **Dataform** page in the console → the repository →
   show the **compiled graph** (dependency DAG) and the tags. Also open
   **Workflow Execution Logs** — this is where the per-stage SQL actually executes

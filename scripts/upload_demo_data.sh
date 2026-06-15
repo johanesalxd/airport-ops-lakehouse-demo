@@ -20,7 +20,10 @@ echo ">> Resetting local staging dir ${OUT_DIR}"
 rm -rf "${OUT_DIR}"
 
 echo ">> Generating ${DAYS} day(s) of synthetic data (seed=${SEED})"
-python3 scripts/generate_demo_data.py --out-dir "${OUT_DIR}" --days "${DAYS}" --seed "${SEED}"
+# Run via uv so Python + pyarrow are pinned/reproducible (see pyproject.toml).
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+uv run --project "${REPO_ROOT}" python "${REPO_ROOT}/scripts/generate_demo_data.py" \
+  --out-dir "${OUT_DIR}" --days "${DAYS}" --seed "${SEED}"
 
 # Also remove matching stale objects already in the GCS landing zone from prior
 # uploads (rsync only adds/updates, never deletes). Add more patterns here if a

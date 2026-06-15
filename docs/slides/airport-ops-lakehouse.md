@@ -343,13 +343,13 @@ Same query, same table — **the result depends on who's asking.** All declared 
 - Atomic star schema
 - Semantic roll-up views
 - Assertions + quarantine + DQ summary
+- RLS + CLS / masking (governance stage)
 - Composer orchestration + lineage
 
 </div>
 <div class="pill">
 
 **Roadmap**
-- RLS / CLS + masking
 - Managed DQ (Dataplex AutoDQ)
 - Pub/Sub streaming + continuous queries
 - Conversational analytics / data agents
@@ -361,7 +361,7 @@ Same query, same table — **the result depends on who's asking.** All declared 
 </div>
 </div>
 
-<span class="small">Vs. Google Cloud's lakehouse reference pattern, only the BI layer and conversational analytics are shown as roadmap.</span>
+<span class="small">Vs. Google Cloud's lakehouse reference pattern, the BI layer, streaming, and conversational analytics remain on the roadmap; governance (RLS/CLS) is now covered.</span>
 
 ---
 

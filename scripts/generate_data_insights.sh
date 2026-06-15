@@ -10,4 +10,7 @@
 #
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec python3 "${HERE}/generate_data_insights.py" "$@"
+REPO_ROOT="$(cd "${HERE}/.." && pwd)"
+# Run via uv so the Python version is pinned/reproducible (see pyproject.toml).
+# The script itself is stdlib-only, but uv keeps invocation consistent.
+exec uv run --project "${REPO_ROOT}" python "${HERE}/generate_data_insights.py" "$@"

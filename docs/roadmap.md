@@ -221,7 +221,7 @@ open-sourcing:
   project, grant `connectionAdmin` **per-connection** (resource-level
   setIamPolicy on the Spark/Gemini/BigLake connections) instead.
 - **Make `teardown.sh` a complete inverse of `bootstrap.sh`.** Today teardown
-  reliably deletes the 7 datasets (and everything inside them), the `raw/` data,
+  reliably deletes the 8 datasets (and everything inside them), the `raw/` data,
   and the Dataform repository — which is enough to enable a clean rebuild (and
   notably drops `airport_ops_control`, so the legacy managed `raw_customer_feedback`
   cannot linger and break the external-table DDL on a fresh run). But it does not

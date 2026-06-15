@@ -131,7 +131,7 @@ medallion layer (or a setup step), so the task list *is* the architecture.
 
 ### 3. What success looks like
 
-- **All 9 tasks green**, in order `compile_repo → … → publish_run_summary`.
+- **All 10 tasks green**, in order `compile_repo → … → security → publish_run_summary`.
 - **Row counts** (3-day seed) roughly: bronze ~123 flights; gold `fct_flight`
   ~123, `fct_baggage` ~300+, `fct_feedback` ~75.
 - **Semantic views return rows** — `sem_airport_operations_daily` shows a rising
@@ -160,9 +160,12 @@ Git repo root**, and that repository is what Composer invokes. See
 ```
 airport-ops-lakehouse-demo/
   README.md
+  pyproject.toml                    # Python deps (pyarrow), managed by uv
   .env.example                      # all project/region/connection/dataset config
   scripts/
     generate_demo_data.py           # deterministic 6-source synthetic generator
+    generate_data_insights.py       # Dataplex data-insights scans (impl)
+    generate_data_insights.sh       # thin wrapper for the data-insights script
     bootstrap.sh                    # datasets, bucket, SA, IAM, Composer DAG upload
     upload_demo_data.sh             # generate + upload to GCS
     teardown.sh                     # remove demo resources (keeps shared connections)
@@ -175,6 +178,7 @@ airport-ops-lakehouse-demo/
     demo-script.md                  # the workshop runbook
     roadmap.md                      # what's next (governance, streaming, insights)
     gcp-docs.md                     # official GCP documentation map
+    slides/                         # Marp workshop deck (+ README for building it)
   sample_data/                      # one day of generated output, for reference
 ```
 
@@ -184,16 +188,30 @@ airport-ops-lakehouse-demo/
 
 - A GCP project with BigQuery, Dataform, Dataproc, Vertex AI, Composer, Secret
   Manager, and Cloud Storage APIs enabled (`bootstrap.sh` enables them).
-- `gcloud` authenticated (`gcloud auth application-default login`) with rights to
-  create datasets, buckets, service accounts, and IAM bindings.
+- `gcloud` (with the `bq` CLI) authenticated (`gcloud auth application-default
+  login`) with rights to create datasets, buckets, service accounts, and IAM
+  bindings.
+- **Two Google Groups must already exist** for the RLS/CLS `security` stage:
+  `bq-rls-cls-dataform-admin@<domain>` and `bq-rls-cls-dataform-sales@<domain>`.
+  `bootstrap.sh` grants them read roles (it can't create groups), so it will fail
+  if they don't exist. Set them as `ADMIN_GROUP` / `SALES_GROUP` in `.env`.
 - **Assumed already provisioned** (the demo *reuses* these rather than creating
   them): three BigQuery connections — a **Spark** connection, a **CLOUD_RESOURCE**
   connection for Gemini, and one for BigLake — plus a **Cloud Composer**
   environment, the **GCP Dataform repository** linked to the companion Git repo,
   and the **Secret Manager** secret holding the Git token. How these are wired is
   documented in [`docs/architecture.md`](docs/architecture.md).
-- Python 3, `pyarrow` (for the Parquet generator), Node + the Dataform CLI (only
-  needed for local Dataform compile).
+- **[uv](https://docs.astral.sh/uv/)** — manages the Python version + deps
+  (`pyarrow`); the scripts run under `uv run` (see `pyproject.toml`). Run
+  `uv sync` once. Node + the Dataform CLI are optional (only for local Dataform
+  compile). To build the slide deck, see [`docs/slides/README.md`](docs/slides/README.md).
+- `bootstrap.sh` also creates the `airport_governance` dataset and grants the
+  Dataform service account the RLS/CLS policy-creation roles.
+- The optional data-insights script (`scripts/generate_data_insights.sh`) runs as
+  **your** ADC identity and needs extra roles: `roles/dataplex.dataScanEditor`,
+  `roles/bigquery.dataViewer` + `roles/bigquery.dataEditor`, `roles/bigquery.user`
+  (and for catalog publishing, `roles/dataplex.catalogEditor` +
+  `roles/dataplex.entryOwner`).
 
 ---
 
@@ -203,6 +221,9 @@ airport-ops-lakehouse-demo/
 # 1. Configure (defaults already target the demo project)
 cp .env.example .env
 source .env
+
+# 1b. Install Python deps into a pinned uv environment (one-time)
+uv sync
 
 # 2. Provision infra/IAM and upload the Composer DAG (idempotent)
 bash scripts/bootstrap.sh
@@ -277,6 +298,7 @@ insights** is available as an optional script (see *How to run* below).
 | [`docs/operations.md`](docs/operations.md) | Runbook: **where logs live**, Composer 3 caveats, idempotency, known issues |
 | [`docs/roadmap.md`](docs/roadmap.md) | Governance, streaming, continuous queries, data insights |
 | [`docs/gcp-docs.md`](docs/gcp-docs.md) | Official Google Cloud documentation map |
+| [`docs/slides/README.md`](docs/slides/README.md) | The Marp workshop deck and how to build/update it |
 
 ---
 

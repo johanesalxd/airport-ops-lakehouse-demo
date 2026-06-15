@@ -41,8 +41,8 @@ Dataform orchestrates **SQL**. When the work isn't SQL-shaped — parsing
 compressed/nested files, complex procedural logic, ML feature code — use the
 right engine and **call it from Dataform**. This demo does exactly that:
 
-- gzip CSV, nested JSON, and multilingual JSON are processed by **serverless
-  BigQuery Spark stored procedures** (PySpark),
+- gzip CSV and nested JSON are processed by **serverless BigQuery Spark stored
+  procedures** (PySpark),
 - those procedures are **wrapped as Dataform operations** (`CALL ...`),
 - and the whole graph is **invoked by Cloud Composer (Airflow)**.
 

@@ -1,0 +1,16 @@
+[project]
+name = "airport-ops-lakehouse-demo"
+version = "0.1.0"
+description = "Synthetic data generator + helper scripts for the Airport Operations Lakehouse demo on Google Cloud."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # Parquet output for the baggage_events source (BigLake external table demo).
+    "pyarrow>=15",
+]
+
+# Run the scripts with uv so the Python version + deps are pinned and reproducible:
+#   uv sync
+#   uv run python scripts/generate_demo_data.py --help
+# The shell wrappers (upload_demo_data.sh, generate_data_insights.sh) already
+# invoke the scripts via `uv run`.
