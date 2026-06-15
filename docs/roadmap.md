@@ -2,7 +2,8 @@
 
 The MVP deliberately stops at a clean, governed batch lakehouse. These are the
 natural next steps, kept out of the critical path so the core demo stays simple.
-Each is grounded in current Google Cloud capabilities.
+Each is grounded in current Google Cloud capabilities; official documentation for
+all of them is mapped in [`gcp-docs.md`](gcp-docs.md).
 
 ## 1. Governance: row-/column-level security & masking
 
@@ -21,6 +22,21 @@ data only — no real PII):
 Implementation note: BigQuery column-level access uses policy tags, and `CREATE
 TABLE` DDL can't assign them directly — so policy-tag assignment needs Terraform,
 `bq` schema updates, or the API rather than pure Dataform SQLX.
+
+### Managed data quality (Dataplex auto data quality + profiling)
+
+Today data quality is enforced *in-pipeline* with Dataform assertions (real gates
+in the `quality` stage). Complement — don't replace — that with **managed,
+scheduled** quality as a platform capability:
+
+- Run a **data profiling scan** on the gold tables, then use the
+  profile to **recommend data-quality rules** (`generateDataQualityRules`).
+- Schedule a **data quality scan** (Dataplex/Knowledge Catalog) with those rules,
+  publish scores to the BigQuery/Knowledge Catalog metadata pages, and alert on
+  failures.
+
+This gives a governance team owned, catalog-visible DQ on top of the developer's
+in-graph assertions.
 
 ## 2. Streaming ingestion: baggage events via Pub/Sub
 
@@ -63,29 +79,111 @@ controls; verify the launch stage of stateful operations before relying on them.
 
 ## 4. Automated metadata: BigQuery data insights
 
-A second Composer DAG that runs after the lakehouse build to auto-generate
-metadata with Gemini in BigQuery:
+**Implemented** as an optional script — [`scripts/generate_data_insights.sh`](../scripts/generate_data_insights.sh).
+It uses Gemini-in-BigQuery via Dataplex `DATA_DOCUMENTATION` data scans to
+auto-generate metadata over the built layers:
 
 ```
-wait_for_lakehouse_run
-  → run Dataplex DATA_DOCUMENTATION scans on gold tables
-  → generate dataset insights for airport_gold
-  → publish descriptions to Knowledge Catalog (optional)
-  → publish insights summary
+for each table in silver + gold:
+  → run a DATA_PROFILE scan + publish it (grounds the insights)
+  → run a DATA_DOCUMENTATION scan (generationScopes=ALL, catalogPublishingEnabled)
+  → publish table/column descriptions + suggested questions/SQL to Knowledge Catalog
+for each view in semantic:
+  → run a DATA_DOCUMENTATION scan (document only; views can't be profiled)
+optionally (--dataset-insights):
+  → dataset-level DATA_DOCUMENTATION scan → relationship graph + cross-table queries
 ```
 
-Generates table/column descriptions, suggested questions + SQL, and dataset
-relationship graphs. Caveats: dataset insights are Preview; data insights are
-Gemini-in-BigQuery features with their own pricing; external/BigLake tables need
-the scan SA to have GCS read on the underlying bucket.
+Generates table/column descriptions, suggested questions + SQL, and (Preview)
+dataset relationship graphs. Caveats: dataset insights are Preview; data insights
+are Gemini-in-BigQuery features with their own pricing; regenerating overwrites
+previous insights; `GEO`/`JSON` columns and >350 columns/table aren't supported;
+external/BigLake tables need the scan/connection SA to have GCS read on the
+underlying bucket (our gold/silver targets are native, so this isn't required).
 
-## 5. BI dashboard
+Future: wrap it in a second Composer DAG that runs after the lakehouse build, so
+metadata refresh is orchestrated alongside the pipeline rather than run manually.
+
+## 5. Conversational analytics / data agents
+
+Put a natural-language layer on top of the `airport_semantic` views so an ops user
+can simply *ask* — "which terminal had the worst delay rate yesterday?" — instead
+of writing SQL:
+
+- Create a **BigQuery data agent** whose knowledge sources are the semantic views,
+  with context/instructions and **verified ("golden") queries** for the common
+  ops questions.
+- Or call the **Conversational Analytics API** (`geminidataanalytics.googleapis.com`)
+  to embed a chat experience in an app.
+
+This is the AI-native consumption surface that sits beside the BI dashboard.
+Caveats: conversational analytics is **Preview**, operates globally (no region
+choice), and is billed at BigQuery compute pricing for the queries it runs.
+
+## 6. AI extension: vector search & embeddings
+
+Go beyond text generation on feedback to **semantic search and RAG**:
+
+- Generate embeddings over `feedback_text` / `english_translation` with
+  `AI.GENERATE_EMBEDDING` (or autonomous embedding generation), optionally build a
+  `CREATE VECTOR INDEX`, and search with `VECTOR_SEARCH` / `AI.SEARCH`.
+- Use cases: "find feedback similar to this complaint", theme clustering, or RAG
+  that grounds a summary in the most relevant comments.
+
+Caveats: vector index isn't supported on Standard editions; autonomous embedding
+generation and `AI.SEARCH` are Preview; embeddings + indexes incur storage cost.
+
+## 7. Open table format: Iceberg managed tables
+
+Evolve bronze/silver from native BigQuery tables to **open-format** storage for
+multi-engine interoperability (Spark, Flink, and BigQuery on one copy of data):
+
+- Recreate selected layers as **Apache Iceberg managed tables** (data in your own
+  Cloud Storage bucket, `file_format = PARQUET`, `table_format = ICEBERG`, `WITH
+  CONNECTION`), keeping the same Dataform graph.
+- Dataform can create Iceberg tables natively
+  (`type: "table"` with the Iceberg config), so the transformation layer is
+  unchanged — only the storage format evolves.
+
+Benefits: schema evolution, time travel, automatic storage optimization, and
+read access from open-source engines without copying data.
+
+## 8. BI dashboard
 
 Point Looker (or Looker Studio) at the `airport_semantic` views — the demo's
 "swap the mini semantic layer for the real one" payoff (see
 [`design-philosophy.md`](design-philosophy.md)).
 
-## 6. Public-release prep
+## 9. Data sharing (Analytics Hub)
+
+Publish the curated gold/semantic layer as a governed **data product**:
+
+- Create a **data exchange** and a **listing** over the `airport_gold` /
+  `airport_semantic` dataset (private listing for internal teams, or public).
+- Subscribers get a read-only **linked dataset** and pay only for their own
+  queries; you keep RLS/CLS and **data-egress controls** on the shared data.
+
+This is the "serve beyond a single BI tool" extension — turning the lakehouse
+output into a shareable product across org boundaries.
+
+## 10. CI/CD & environments (dev / staging / prod)
+
+Today the pipeline compiles and runs Dataform straight off `main`, triggered
+manually — fine for a demo, not for production. Mature it into a managed code
+lifecycle:
+
+- Isolate development tables with **workspace compilation overrides** (schema
+  suffix), so dev work never touches production tables.
+- Drive staging/production with **release configurations** (compile a
+  git commitish) + **workflow configurations** (scheduled runs), optionally split
+  per Google Cloud project for the strongest isolation.
+- Gate promotion on pull requests (`main` → `prod`) and wire Composer/Dataform
+  failures into alerting.
+
+Relates to public-release prep (below): environments need the runtime config
+parameterised rather than hardcoded.
+
+## 11. Public-release prep
 
 Today the runtime config (project id, region, connection names, service-account
 emails) is hardcoded for the demo project, so the live run stays simple. Before

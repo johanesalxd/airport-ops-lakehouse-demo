@@ -117,6 +117,24 @@ orphan baggage, gate double-bookings, missing scans). Mention assertions are rea
 gates in the `quality` stage. Show lineage in **Dataplex / BigQuery lineage**
 from raw → bronze → gold.
 
+## 7b. (Optional) Auto-generated metadata with Gemini (3 min) — live
+
+If you want to show the AI metadata story, run the data-insights script over the
+built layers (silver + gold tables, semantic views):
+
+```bash
+source .env && bash scripts/generate_data_insights.sh --dataset-insights
+```
+
+Then in **BigQuery Studio**, select e.g. `airport_gold.fct_flight` → **Insights**
+tab and show the **auto-generated table/column descriptions** and the **suggested
+natural-language questions + SQL**. Select the `airport_gold` *dataset* → Insights
+to show the **relationship graph** across the star schema (dims ↔ facts).
+
+Say: *"Gemini in BigQuery profiled the data and generated documentation + starter
+queries automatically — published to Knowledge Catalog for governance."* Note
+this is a separate Gemini-in-BigQuery feature (dataset insights are Preview).
+
 ## 8. Close (2 min) — concept
 
 - Transformation (Dataform) vs semantics (views/Looker) — clean separation.

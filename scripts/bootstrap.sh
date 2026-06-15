@@ -22,11 +22,14 @@ echo ">> Project: ${PROJECT_ID}  Region: ${REGION}"
 gcloud config set project "${PROJECT_ID}" >/dev/null
 
 echo ">> Enabling required APIs (no-op if already enabled)"
+# dataplex + cloudaicompanion (Gemini for Google Cloud) power the optional
+# data-insights script (scripts/generate_data_insights.sh).
 gcloud services enable \
   bigquery.googleapis.com bigqueryconnection.googleapis.com \
   dataform.googleapis.com dataproc.googleapis.com \
   aiplatform.googleapis.com composer.googleapis.com \
-  secretmanager.googleapis.com storage.googleapis.com >/dev/null
+  secretmanager.googleapis.com storage.googleapis.com \
+  dataplex.googleapis.com cloudaicompanion.googleapis.com >/dev/null
 
 echo ">> Creating BigQuery datasets in ${REGION}"
 for DS in "${DS_BRONZE}" "${DS_SILVER}" "${DS_GOLD}" "${DS_SEMANTIC}" \
@@ -101,3 +104,8 @@ echo ">> Bootstrap complete."
 echo "   Dataform SA : ${DATAFORM_SA_EMAIL}"
 echo "   Composer SA : ${COMPOSER_SA}"
 echo "   Raw bucket  : gs://${RAW_BUCKET}"
+echo
+echo "   NOTE: the optional data-insights script (scripts/generate_data_insights.sh)"
+echo "   runs as YOUR ADC identity, which needs: roles/dataplex.dataScanEditor,"
+echo "   roles/bigquery.dataViewer + roles/bigquery.dataEditor, roles/bigquery.user,"
+echo "   and (for catalog publishing) roles/dataplex.catalogEditor + roles/dataplex.entryOwner."

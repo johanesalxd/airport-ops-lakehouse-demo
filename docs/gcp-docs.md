@@ -176,6 +176,112 @@ This file maps the demo design to official Google Cloud docs. Implementation age
   https://docs.cloud.google.com/bigquery/docs/generate-dataset-insights  
   Use for: dataset-level relationship graph generation, required APIs, Gemini in BigQuery setup, data profile scan recommendation, Preview caveat.
 
+## BigQuery data insights (Gemini-in-BigQuery, Dataplex DATA_DOCUMENTATION)
+
+- Data insights overview  
+  https://docs.cloud.google.com/bigquery/docs/data-insights  
+  Use for: table vs dataset insights, what's generated (descriptions, NL questions + SQL, relationship graph), Gemini-in-BigQuery prerequisite, limitations (no `GEO`/`JSON` columns, 350-column cap, dataset insights Preview, regeneration overwrites), pricing.
+
+- Generate table insights  
+  https://docs.cloud.google.com/bigquery/docs/generate-table-insights  
+  Use for: the programmatic REST flow via the Dataplex `DataScans` API with `type: DATA_DOCUMENTATION`; `generationScopes` (`ALL` / `TABLE_AND_COLUMN_DESCRIPTIONS` / `SQL_QUERIES`); `catalogPublishingEnabled`; one-time scan with TTL; polling `dataScans.jobs.get`; publishing results via `dataplex-data-documentation-published-*` table labels; required IAM roles; external/BigLake prerequisites.
+
+- Generate dataset insights  
+  https://docs.cloud.google.com/bigquery/docs/generate-dataset-insights  
+  Use for: dataset-level relationship graph generation (Preview), required APIs, Gemini-in-BigQuery setup, profile-scan grounding recommendation.
+
+- Create a data profile scan  
+  https://docs.cloud.google.com/bigquery/docs/data-profile-scan  
+  Use for: grounding insights — create/run a `DATA_PROFILE` scan and publish via `dataplex-dp-published-*` labels so Gemini grounds output in real values.
+
+- Dataplex DataScans API reference  
+  https://docs.cloud.google.com/dataplex/docs/reference/rest/v1/projects.locations.dataScans  
+  Use for: `dataScans.create` / `run` / `get` request bodies, trigger types (`onDemand`, `oneTime` with TTL), and the `DataScan` resource schema.
+
+## Conversational analytics & data agents
+
+- Conversational analytics overview  
+  https://docs.cloud.google.com/bigquery/docs/conversational-analytics  
+  Use for: data agents over tables/views, context + instructions, verified ("golden") queries, BigQuery ML support, pricing, Preview caveat, global-only location.
+
+- Create data agents  
+  https://docs.cloud.google.com/bigquery/docs/create-data-agents  
+  Use for: creating a data agent with knowledge sources and required roles; discovery/use in Gemini Enterprise.
+
+- Conversational Analytics API overview  
+  https://docs.cloud.google.com/gemini/docs/conversational-analytics-api/overview  
+  Use for: building an embedded NL chat (`geminidataanalytics.googleapis.com`), supported sources, cost controls.
+
+## Dataform code lifecycle / CI/CD & environments
+
+- Manage the Dataform code lifecycle  
+  https://docs.cloud.google.com/dataform/docs/managing-code-lifecycle  
+  Use for: dev/staging/prod isolation strategies (by schema, by schema+project), PR-based promotion (`main` → `prod`).
+
+- Configure Dataform compilation (workspace overrides, release configurations)  
+  https://docs.cloud.google.com/dataform/docs/configure-compilation  
+  Use for: workspace compilation overrides (schema suffix) and release configurations (compile a git commitish).
+
+- Schedule Dataform executions (workflow configurations)  
+  https://docs.cloud.google.com/dataform/docs/schedule-runs  
+  Use for: workflow configurations to schedule compiled releases; Composer integration.
+
+## Open table format (Apache Iceberg)
+
+- Apache Iceberg managed tables  
+  https://docs.cloud.google.com/bigquery/docs/biglake-iceberg-tables-in-bigquery  
+  Use for: `file_format = PARQUET` + `table_format = ICEBERG` + `WITH CONNECTION`, schema evolution, time travel, storage optimization, load/export, metadata snapshots.
+
+- Create Apache Iceberg external tables  
+  https://docs.cloud.google.com/bigquery/docs/iceberg-external-tables  
+  Use for: read-only Iceberg external tables with the Lakehouse runtime catalog, fine-grained access control.
+
+- Create tables in Dataform workflows (Iceberg)  
+  https://docs.cloud.google.com/dataform/docs/create-tables  
+  Use for: creating Iceberg tables natively from Dataform so the transformation graph stays unchanged.
+
+## Managed data quality (Dataplex auto data quality)
+
+- Scan for data quality issues (BigQuery)  
+  https://docs.cloud.google.com/bigquery/docs/data-quality-scan  
+  Use for: creating/scheduling data quality scans from BigQuery, viewing results, publishing scores to Knowledge Catalog.
+
+- Auto data quality (Dataplex)  
+  https://docs.cloud.google.com/dataplex/docs/use-auto-data-quality  
+  Use for: rule dimensions, `dataScans.create` for `DATA_QUALITY`, and profile-based rule recommendations (`generateDataQualityRules`).
+
+- Data profiling overview  
+  https://docs.cloud.google.com/dataplex/docs/data-profiling-overview  
+  Use for: profiling concepts that feed DQ rule recommendations and insight grounding.
+
+## Data sharing (Analytics Hub)
+
+- Introduction to BigQuery data sharing  
+  https://docs.cloud.google.com/bigquery/docs/analytics-hub-introduction  
+  Use for: publisher/subscriber architecture, data exchanges, listings, linked datasets, data-egress controls.
+
+- Manage data exchanges  
+  https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-exchanges  
+  Use for: creating exchanges and setting permissions.
+
+- Manage listings  
+  https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-listings  
+  Use for: publishing a dataset as a listing, public vs private, sharing stored procedures.
+
+## Vector search & embeddings
+
+- Vector search introduction  
+  https://docs.cloud.google.com/bigquery/docs/vector-search-intro  
+  Use for: `AI.GENERATE_EMBEDDING`, autonomous embedding generation, `VECTOR_SEARCH` / `AI.SEARCH` / `AI.SIMILARITY`, pricing, edition caveats.
+
+- Search embeddings with vector search (tutorial)  
+  https://docs.cloud.google.com/bigquery/docs/vector-search  
+  Use for: end-to-end create-index + search example, required permissions.
+
+- Create a vector index  
+  https://docs.cloud.google.com/bigquery/docs/vector-index  
+  Use for: `CREATE VECTOR INDEX`, distance types, index management, table-size limits.
+
 ## Implementation reminder
 
 If implementation behavior differs from this plan, prefer the current official docs over this README and update the README with the exact reason.

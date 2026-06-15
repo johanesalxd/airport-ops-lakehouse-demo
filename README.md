@@ -201,6 +201,11 @@ bash scripts/upload_demo_data.sh 3 42
 # 4. Run the pipeline: trigger the `airport_ops_lakehouse` DAG in Composer.
 #    It compiles the Dataform repo and runs it stage by stage:
 #    setup → ingestion → bronze → silver → gold → semantic → quality
+
+# 5. (Optional) Auto-generate BigQuery data insights — AI descriptions, suggested
+#    questions + SQL, and a dataset relationship graph — over the built layers:
+bash scripts/generate_data_insights.sh                 # silver + gold + semantic
+bash scripts/generate_data_insights.sh --dataset-insights   # + relationship graph
 ```
 
 Then explore results in BigQuery (the semantic views in `airport_semantic`, the
@@ -227,9 +232,12 @@ Gemini enrichment in `airport_silver.slv_customer_feedback_enriched`, and
 | Cost control | small synthetic volumes, partition/cluster, teardown script |
 
 **Not covered (intentionally — see the roadmap):** row-/column-level security and
-masking, Pub/Sub streaming ingestion, BigQuery continuous queries, automated
-BigQuery data insights, and a BI dashboard. These are documented as next steps in
-[`docs/roadmap.md`](docs/roadmap.md).
+masking, managed data quality (Dataplex auto DQ), Pub/Sub streaming ingestion,
+BigQuery continuous queries, conversational analytics / data agents, vector
+search & embeddings, an Iceberg open-table-format variant, a BI dashboard, data
+sharing (Analytics Hub), and Dataform CI/CD environments. These are documented as
+next steps in [`docs/roadmap.md`](docs/roadmap.md). **Automated BigQuery data
+insights** is available as an optional script (see *How to run* below).
 
 > Measured against Google Cloud's
 > [end-to-end data integration](https://cloud.google.com/use-cases/data-integration)
