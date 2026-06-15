@@ -144,6 +144,38 @@ This file maps the demo design to official Google Cloud docs. Implementation age
   https://docs.cloud.google.com/bigquery/docs/authorized-views  
   Use for: exposing selected data products while preserving underlying RLS/CLS behavior.
 
+## Streaming and real-time extensions
+
+- Pub/Sub BigQuery subscriptions  
+  https://docs.cloud.google.com/pubsub/docs/bigquery  
+  Use for: direct Pub/Sub-to-BigQuery streaming ingestion, BigQuery Storage Write API behavior, at-least-once delivery caveat, dead-letter handling, CDC ingestion support.
+
+- Dataflow Pub/Sub to BigQuery streaming tutorial  
+  https://docs.cloud.google.com/dataflow/docs/tutorials/dataflow-stream-to-bigquery  
+  Use for: alternative streaming path when messages require complex transformation, exactly-once-oriented Dataflow template behavior, and `gcloud dataflow jobs run` template examples.
+
+- BigQuery continuous queries introduction  
+  https://docs.cloud.google.com/bigquery/docs/continuous-queries-introduction  
+  Use for: continuous query concepts, supported sources, supported outputs, AI function support, stateful operation caveats.
+
+- BigQuery continuous queries guide/examples  
+  https://docs.cloud.google.com/bigquery/docs/continuous-queries  
+  Use for: `APPENDS`, `CHANGES`, writing continuous output to BigQuery, exporting to Pub/Sub, Bigtable, or Spanner, and continuous `AI.GENERATE_TEXT` examples.
+
+## BigQuery data insights / automated documentation
+
+- BigQuery data insights overview  
+  https://docs.cloud.google.com/bigquery/docs/data-insights  
+  Use for: table insights, dataset insights, generated descriptions, generated SQL recommendations, relationship graphs, pricing caveats.
+
+- Generate table insights  
+  https://docs.cloud.google.com/bigquery/docs/generate-table-insights  
+  Use for: Dataplex `DATA_DOCUMENTATION` data scans, `generationScopes`, `catalogPublishingEnabled`, one-time TTL scans, polling scan jobs, BigLake/external table insight prerequisites.
+
+- Generate dataset insights  
+  https://docs.cloud.google.com/bigquery/docs/generate-dataset-insights  
+  Use for: dataset-level relationship graph generation, required APIs, Gemini in BigQuery setup, data profile scan recommendation, Preview caveat.
+
 ## Implementation reminder
 
 If implementation behavior differs from this plan, prefer the current official docs over this README and update the README with the exact reason.

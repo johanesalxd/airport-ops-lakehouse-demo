@@ -527,6 +527,95 @@ Implementation caveat: BigQuery column-level access control uses policy tags and
 
 Keep all security-demo data synthetic. Do not introduce real passenger PII.
 
+### 11.5 Streaming extension: baggage events from Pub/Sub to BigQuery
+
+Add a future real-time scenario where baggage scan events stop arriving as daily Parquet files and become live operational events.
+
+Recommended extension design:
+
+```text
+Baggage scanner simulator
+  -> Pub/Sub topic: baggage-events
+  -> Pub/Sub BigQuery subscription
+  -> airport_streaming.baggage_events_stream
+  -> BigQuery continuous query / Dataform silver model
+  -> near-real-time baggage SLA and disruption gold tables
+```
+
+Use a **Pub/Sub BigQuery subscription** for the first streaming version. Google Cloud docs state that BigQuery subscriptions write Pub/Sub messages directly to an existing BigQuery table using the BigQuery Storage Write API and don't require a separate subscriber client. This is simpler than Dataflow when messages don't require heavy transformation before landing.
+
+Important implementation notes:
+
+- BigQuery subscriptions provide **at-least-once** delivery, so downstream models must deduplicate by event ID / scan ID.
+- Configure a dead-letter topic for schema or write failures.
+- If exactly-once delivery or complex windowed transformations are required, add a Dataflow Pub/Sub-to-BigQuery template or custom Beam pipeline later.
+- For CDC-style updates/deletes, Pub/Sub BigQuery subscriptions can support BigQuery CDC ingestion when schema settings and `_CHANGE_TYPE` / `_CHANGE_SEQUENCE_NUMBER` fields are used correctly.
+
+### 11.6 Continuous query extension
+
+Add an advanced real-time analytics extension using BigQuery continuous queries.
+
+Candidate scenarios:
+
+1. **Real-time baggage SLA table**
+   - Source: `airport_streaming.baggage_events_stream`
+   - Continuous query reads `APPENDS(TABLE ..., start_timestamp)`.
+   - Output: `airport_realtime.baggage_sla_realtime`
+   - Purpose: flag bags with missing load scans, late transfer scans, or routing anomalies.
+
+2. **Operational alert Pub/Sub topic**
+   - Continuous query filters severe baggage exceptions or terminal congestion events.
+   - Output: `EXPORT DATA OPTIONS(format='CLOUD_PUBSUB', uri='...')`.
+   - Purpose: trigger downstream alerting / application integration.
+
+3. **Real-time Gemini enrichment**
+   - Continuous query can call supported AI functions such as `AI.GENERATE_TEXT` over new rows and write enriched output to another BigQuery table or export to Pub/Sub.
+   - Keep this optional because continuous AI calls can become expensive and harder to demo safely.
+
+Implementation caveats:
+
+- Continuous queries are long-running SQL jobs; document start/stop and cost controls.
+- Use `APPENDS` for append-only streaming tables. Use `CHANGES` only where supported, especially for Pub/Sub export use cases.
+- Stateful operations such as joins, aggregations, and windowing are documented but may be Pre-GA; verify current launch stage before making them part of the main demo.
+
+### 11.7 Data insights automation extension
+
+Add a second Composer DAG to generate Gemini-powered BigQuery data insights after bronze/silver/gold tables are built.
+
+BigQuery data insights can generate:
+
+- table descriptions
+- column descriptions
+- natural-language questions and SQL query recommendations
+- dataset relationship graphs and cross-table query recommendations
+
+Recommended DAG: `airport_ops_generate_data_insights`
+
+```text
+wait_for_lakehouse_run_complete
+  -> trigger_table_documentation_scans_for_gold_tables
+  -> trigger_dataset_insights_for_airport_gold
+  -> poll_dataplex_datascan_jobs
+  -> publish_metadata_to_knowledge_catalog_where_enabled
+  -> publish_insights_summary
+```
+
+Implementation path from docs:
+
+- Enable Dataplex API, BigQuery API, and Gemini for Google Cloud API.
+- Set up Gemini in BigQuery.
+- Prefer running Dataplex `DATA_DOCUMENTATION` scans through the Dataplex API.
+- For table insights, create/run a `dataScans` resource with `type: "DATA_DOCUMENTATION"` and `dataDocumentationSpec.generationScopes` set to `ALL`, `TABLE_AND_COLUMN_DESCRIPTIONS`, or `SQL_QUERIES`.
+- Use `catalogPublishingEnabled: true` when the demo should publish generated descriptions to Knowledge Catalog.
+- Poll scan status with `dataScans.get` / scan job status until `SUCCEEDED` or `FAILURE`.
+- For one-off demo runs, use one-time scans with TTL after scan completion so scan resources clean themselves up.
+
+Important caveats:
+
+- Dataset insights are Preview in the docs; keep dataset-level relationship graph generation as an extension, not an MVP acceptance criterion.
+- Data insights are Gemini in BigQuery features and have pricing/compliance caveats distinct from core BigQuery.
+- For BigLake or external tables, required service accounts need Cloud Storage object read permissions for the underlying bucket.
+
 ---
 
 ## 12. Cloud Composer Orchestration
@@ -740,6 +829,9 @@ The implementation is complete when:
 - [ ] Lineage can be viewed or documented clearly.
 - [ ] Composer DAG orchestrates the end-to-end run and invokes Dataform by stage/tag or workflow invocation.
 - [ ] Phase 2 governance backlog documents RLS, CLS/policy tags, dynamic masking, and authorized views.
+- [ ] Extension backlog documents streaming baggage events via Pub/Sub BigQuery subscriptions.
+- [ ] Extension backlog documents BigQuery continuous query scenarios for real-time baggage SLA and operational alerting.
+- [ ] Extension backlog documents a second Composer DAG for BigQuery data insights / Dataplex data documentation scans.
 - [ ] README includes setup, run, validation, teardown, and troubleshooting instructions.
 - [ ] No real PII, secrets, credentials, or proprietary airport data are committed.
 
@@ -794,6 +886,13 @@ Key references:
 - BigQuery column-level access control intro: https://docs.cloud.google.com/bigquery/docs/column-level-security-intro
 - BigQuery column-level access control guide: https://docs.cloud.google.com/bigquery/docs/column-level-security
 - BigQuery authorized views: https://docs.cloud.google.com/bigquery/docs/authorized-views
+- Pub/Sub BigQuery subscriptions: https://docs.cloud.google.com/pubsub/docs/bigquery
+- Dataflow Pub/Sub to BigQuery streaming tutorial: https://docs.cloud.google.com/dataflow/docs/tutorials/dataflow-stream-to-bigquery
+- BigQuery continuous queries introduction: https://docs.cloud.google.com/bigquery/docs/continuous-queries-introduction
+- BigQuery continuous queries guide/examples: https://docs.cloud.google.com/bigquery/docs/continuous-queries
+- BigQuery data insights overview: https://docs.cloud.google.com/bigquery/docs/data-insights
+- Generate table insights: https://docs.cloud.google.com/bigquery/docs/generate-table-insights
+- Generate dataset insights: https://docs.cloud.google.com/bigquery/docs/generate-dataset-insights
 
 ---
 
