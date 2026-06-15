@@ -3,6 +3,14 @@
 A "concept then live" runbook for the workshop. Project:
 `johanesa-playground-326616`, region `us-central1`.
 
+## Assumed one-time platform setup
+
+These exist already and are *reused* by the demo (not created by the scripts): the
+three BigQuery connections (Spark, Gemini, BigLake), the Cloud Composer
+environment, the GCP Dataform repository linked to the companion Git repo, and the
+Secret Manager secret holding the Git token. See
+[`architecture.md`](architecture.md) for how they are wired.
+
 ## 0. One-time seed (before the session)
 
 ```bash
@@ -55,8 +63,9 @@ is called from Dataform for the non-SQL work."
 ## 5. Run it end-to-end from Airflow (5 min) — live
 
 - Open the Composer **`dev-airflow`** Airflow UI → DAG `airport_ops_lakehouse`.
-- Trigger it. Watch the stages: `compile_repo → setup → ingestion → silver →
-  gold → semantic → quality → publish_run_summary`.
+- Trigger it. Watch the stages: `compile_repo → setup → ingestion → bronze →
+  silver → gold → semantic → quality → publish_run_summary`. The stages are the
+  medallion layers — point that out as it runs.
 - While it runs, open the **Dataform** page in the console → the repository →
   show the **compiled graph** (dependency DAG) and the tags.
 - In **BigQuery → Job history**, point out a Spark procedure run and the

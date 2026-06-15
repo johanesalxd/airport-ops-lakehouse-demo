@@ -40,8 +40,10 @@ REPOSITORY_ID = "airport-ops-lakehouse-dataform"
 GIT_COMMITISH = "main"
 SEMANTIC_DATASET = "airport_semantic"
 
-# Pipeline stages run in this order; each maps to a Dataform tag.
-STAGES = ["setup", "ingestion", "silver", "gold", "semantic", "quality"]
+# Pipeline stages run in this order; each maps to a Dataform tag. Each stage runs
+# only the actions carrying its tag (transitive dependencies disabled), so the
+# medallion layers must each be their own stage — including `bronze`.
+STAGES = ["setup", "ingestion", "bronze", "silver", "gold", "semantic", "quality"]
 
 default_args = {
     "owner": "airport-demo",
