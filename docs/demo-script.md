@@ -17,12 +17,12 @@ Secret Manager secret holding the Git token. See
 cd airport-ops-lakehouse-demo
 cp .env.example .env            # values are already correct for the demo project
 source .env
-bash scripts/bootstrap.sh       # datasets, bucket, SA, IAM (idempotent)
+bash scripts/bootstrap.sh       # datasets, bucket, SA, IAM, Composer DAG upload
 bash scripts/upload_demo_data.sh 3 42   # generate + upload 3 days of synthetic data
 ```
 
-The Dataform GCP repository, GitHub connection, and Composer DAG are already
-deployed. Confirm raw data landed:
+The Dataform GCP repository and GitHub connection are already deployed;
+`bootstrap.sh` uploads the Composer DAG. Confirm raw data landed:
 
 ```bash
 gcloud storage ls gs://airport-ops-demo-605626490127/raw/

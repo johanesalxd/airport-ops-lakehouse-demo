@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
 # Idempotent provisioning for the Airport Operations Lakehouse demo.
-# Creates datasets, the raw GCS bucket, a Dataform service account, and grants
+# Creates datasets, the raw GCS bucket, a Dataform service account, grants
 # the IAM required for serverless Spark stored procedures, Gemini remote models,
-# Dataform execution, and Composer orchestration.
+# Dataform execution, and Composer orchestration, and uploads the Composer DAG.
 #
 # Reuses existing connections (spark-etl-conn, gemini_conn). It does NOT create
 # BigQuery connections.
@@ -13,6 +13,10 @@
 #   source .env && bash scripts/bootstrap.sh
 #
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+DAG_FILE="${REPO_ROOT}/composer/dags/airport_ops_lakehouse_dag.py"
 
 : "${PROJECT_ID:?set PROJECT_ID (source .env)}"
 : "${REGION:?set REGION}"
@@ -91,8 +95,10 @@ gcloud iam service-accounts add-iam-policy-binding "${DATAFORM_SA_EMAIL}" \
   --role="roles/iam.serviceAccountTokenCreator" >/dev/null
 
 echo ">> Granting Composer worker SA the Dataform + act-as permissions"
-COMPOSER_SA="$(gcloud composer environments describe "${COMPOSER_ENV}" \
-  --location="${REGION}" --format='value(config.nodeConfig.serviceAccount)')"
+# One describe captures both the worker SA and the DAG bucket prefix (tab-separated).
+read -r COMPOSER_SA COMPOSER_DAG_GCS_PREFIX < <(gcloud composer environments describe \
+  "${COMPOSER_ENV}" --location="${REGION}" \
+  --format='value(config.nodeConfig.serviceAccount, config.dagGcsPrefix)')
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${COMPOSER_SA}" \
   --role="roles/dataform.admin" --condition=None >/dev/null
@@ -100,9 +106,22 @@ gcloud iam service-accounts add-iam-policy-binding "${DATAFORM_SA_EMAIL}" \
   --member="serviceAccount:${COMPOSER_SA}" \
   --role="roles/iam.serviceAccountUser" >/dev/null
 
+echo ">> Uploading Composer DAG"
+if [[ ! -f "${DAG_FILE}" ]]; then
+  echo "ERROR: Composer DAG file not found: ${DAG_FILE}" >&2
+  exit 1
+fi
+if [[ -z "${COMPOSER_DAG_GCS_PREFIX}" ]]; then
+  echo "ERROR: Could not discover Composer DAG GCS prefix for ${COMPOSER_ENV}" >&2
+  exit 1
+fi
+gcloud storage cp "${DAG_FILE}" "${COMPOSER_DAG_GCS_PREFIX}/"
+echo "   - uploaded ${DAG_FILE} to ${COMPOSER_DAG_GCS_PREFIX}/"
+
 echo ">> Bootstrap complete."
 echo "   Dataform SA : ${DATAFORM_SA_EMAIL}"
 echo "   Composer SA : ${COMPOSER_SA}"
+echo "   Composer DAG: ${COMPOSER_DAG_GCS_PREFIX}/airport_ops_lakehouse_dag.py"
 echo "   Raw bucket  : gs://${RAW_BUCKET}"
 echo
 echo "   NOTE: the optional data-insights script (scripts/generate_data_insights.sh)"

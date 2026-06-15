@@ -151,7 +151,7 @@ airport-ops-lakehouse-demo/
   .env.example                      # all project/region/connection/dataset config
   scripts/
     generate_demo_data.py           # deterministic 6-source synthetic generator
-    bootstrap.sh                    # datasets, bucket, SA, IAM (idempotent)
+    bootstrap.sh                    # datasets, bucket, SA, IAM, Composer DAG upload
     upload_demo_data.sh             # generate + upload to GCS
     teardown.sh                     # remove demo resources (keeps shared connections)
   composer/dags/
@@ -192,7 +192,7 @@ airport-ops-lakehouse-demo/
 cp .env.example .env
 source .env
 
-# 2. Provision datasets, bucket, service account, IAM (idempotent)
+# 2. Provision infra/IAM and upload the Composer DAG (idempotent)
 bash scripts/bootstrap.sh
 
 # 3. Generate + upload 3 days of synthetic data to the GCS landing zone

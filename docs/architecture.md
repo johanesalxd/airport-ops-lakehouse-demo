@@ -191,10 +191,11 @@ operators:
 
 - `DataformCreateCompilationResultOperator` — compiles the connected Git repo
   **once**, at `git_commitish = main`, stamping every bronze row with the Airflow
-  run id via a compilation var (`batchId = {{ ds_nodash }}-{{ run_id }}`).
+  run id via a compilation var (`batchId = {{ run_id }}`).
 - `DataformCreateWorkflowInvocationOperator` — one invocation **per stage**,
-  filtered by tag, with `transitive_dependencies_included = False`.
-- `DataformWorkflowInvocationStateSensor` — waits for each stage to succeed.
+  filtered by tag, with `transitive_dependencies_included = False` and
+  `asynchronous=False`, so each task waits for its Dataform invocation to
+  finish. No separate workflow-invocation sensor is needed.
 
 Stages, in order — one Dataform tag each:
 
