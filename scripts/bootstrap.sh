@@ -57,8 +57,10 @@ else
 fi
 
 echo ">> Granting project roles to Dataform SA"
+# connectionAdmin (not just connectionUser) is required: creating resources
+# WITH CONNECTION (Spark procedures, BigLake table) needs bigquery.connections.delegate.
 for ROLE in roles/bigquery.dataEditor roles/bigquery.jobUser \
-            roles/bigquery.connectionUser roles/storage.objectViewer \
+            roles/bigquery.connectionAdmin roles/storage.objectViewer \
             roles/dataproc.editor; do
   gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member="serviceAccount:${DATAFORM_SA_EMAIL}" --role="${ROLE}" \

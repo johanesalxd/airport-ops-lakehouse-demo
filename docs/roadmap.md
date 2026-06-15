@@ -99,6 +99,11 @@ open-sourcing:
   placeholders (`your-project-id`, `YOUR_PROJECT_NUMBER`, …).
 - Scrub connection **service-account emails** from `.env.example`; have
   `bootstrap.sh` auto-discover them instead.
+- Tighten IAM to least privilege: the execution SA currently gets
+  **project-level** `roles/bigquery.connectionAdmin` (needed for
+  `connections.delegate` when creating resources `WITH CONNECTION`). For a shared
+  project, grant `connectionAdmin` **per-connection** (resource-level
+  setIamPolicy on the Spark/Gemini/BigLake connections) instead.
 
 ---
 

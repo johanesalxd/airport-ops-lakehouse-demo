@@ -4,8 +4,9 @@ Cloud Composer (Airflow) is the outer orchestrator. It drives Dataform via the
 native Dataform Airflow operators:
 
   * DataformCreateCompilationResultOperator  -> compiles the connected Git repo
-  * DataformCreateWorkflowInvocationOperator -> runs a stage (filtered by tag)
-  * DataformWorkflowInvocationStateSensor    -> waits for completion
+  * DataformCreateWorkflowInvocationOperator -> runs a stage (filtered by tag),
+    SYNCHRONOUSLY (asynchronous=False): the task waits for the invocation to
+    finish and fails if it fails. No separate state sensor is needed.
 
 Dataform owns everything inside BigQuery: it CALLs the serverless Spark stored
 procedures, runs the Gemini enrichment, and builds bronze -> silver -> gold
@@ -27,10 +28,6 @@ from airflow.providers.google.cloud.operators.dataform import (
     DataformCreateCompilationResultOperator,
     DataformCreateWorkflowInvocationOperator,
 )
-from airflow.providers.google.cloud.sensors.dataform import (
-    DataformWorkflowInvocationStateSensor,
-)
-from google.cloud.dataform_v1 import WorkflowInvocation
 
 # --- Configuration ----------------------------------------------------------
 
@@ -90,12 +87,14 @@ with models.DAG(
     previous = compile_repo
 
     for stage in STAGES:
+        # Synchronous invocation: the task blocks until the workflow invocation
+        # reaches a terminal state and raises if it fails (no sensor needed).
         invoke = DataformCreateWorkflowInvocationOperator(
-            task_id=f"invoke_{stage}",
+            task_id=f"run_{stage}",
             project_id=PROJECT_ID,
             region=REGION,
             repository_id=REPOSITORY_ID,
-            asynchronous=True,
+            asynchronous=False,
             workflow_invocation={
                 "compilation_result": (
                     "{{ task_instance.xcom_pull('compile_repo')['name'] }}"
@@ -104,26 +103,8 @@ with models.DAG(
             },
         )
 
-        wait = DataformWorkflowInvocationStateSensor(
-            task_id=f"wait_{stage}",
-            project_id=PROJECT_ID,
-            region=REGION,
-            repository_id=REPOSITORY_ID,
-            workflow_invocation_id=(
-                "{{ task_instance.xcom_pull('invoke_%s')['name'].split('/')[-1] }}"
-                % stage
-            ),
-            expected_statuses={WorkflowInvocation.State.SUCCEEDED},
-            failure_statuses={
-                WorkflowInvocation.State.FAILED,
-                WorkflowInvocation.State.CANCELLED,
-            },
-            timeout=60 * 30,
-            poke_interval=30,
-        )
-
-        previous >> invoke >> wait
-        previous = wait
+        previous >> invoke
+        previous = invoke
 
     publish_summary = BigQueryInsertJobOperator(
         task_id="publish_run_summary",
