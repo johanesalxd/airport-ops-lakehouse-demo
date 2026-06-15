@@ -2,7 +2,7 @@
 
 > **Status:** Planning blueprint for implementation.  
 > **Audience:** OpenCode / implementation agents / Google Cloud data engineers.  
-> **Goal:** Build a generic, public-safe airport operations lakehouse demo using Google Cloud services: Cloud Storage, BigQuery, BigLake, BigQuery Spark stored procedures, Dataform, Gemini remote models, Dataplex / Knowledge Catalog lineage, and optional Cloud Composer.
+> **Goal:** Build a generic, public-safe airport operations lakehouse demo using Google Cloud services: Cloud Storage, BigQuery, BigLake, BigQuery Spark stored procedures, Dataform, Gemini remote models, Dataplex / Knowledge Catalog lineage, and Cloud Composer.
 
 This repository is intentionally generic. It must not use real airport data, real passenger data, proprietary Changi Airport data, logos, route schedules, or operationally sensitive details. All sample data must be synthetic.
 
@@ -87,7 +87,7 @@ flowchart LR
 - **Dataform**: SQLX-based analytics engineering, dependency graph, orchestration of SQL operations, assertions, documentation, and bronze/silver/gold modeling.
 - **BigQuery ML remote model over Gemini**: multilingual translation, sentiment, topic, urgency classification for customer feedback.
 - **Dataplex / Knowledge Catalog / Data Lineage**: lineage graphs, metadata, glossary/aspects where implemented.
-- **Cloud Composer**: optional enterprise orchestration wrapper for Dataform workflow invocations and monitoring.
+- **Cloud Composer**: mandatory end-to-end orchestrator that invokes Dataform workflow stages, monitors execution, and publishes run summaries.
 - **Terraform**: recommended for infrastructure, IAM, APIs, buckets, datasets, and connections.
 
 ---
@@ -224,7 +224,7 @@ Gold marts are business-ready analytics products.
 
 ## 7. Dataform Design
 
-Dataform is the primary orchestration and analytics engineering layer.
+Dataform is the primary BigQuery-side analytics engineering layer. Cloud Composer is the end-to-end operational orchestrator that runs the Dataform stages.
 
 It should manage:
 
@@ -512,6 +512,21 @@ Use Dataplex / Knowledge Catalog for:
 
 Do not overclaim lineage. Procedure calls, Dataform API invocations, and custom operations might not automatically produce perfect lineage in every view. If needed, implement explicit custom lineage events in Composer or document the lineage boundaries.
 
+### 11.4 Security extension: row-level security, column-level security, and masking
+
+RLS/CLS should be included as a second-part governance extension, not forced into the MVP critical path.
+
+Recommended Phase 2 governance demo:
+
+- **Row-level security (RLS):** restrict terminal-level operational rows by role, for example Terminal 1 operations users only see `terminal_id = "T1"` rows in `gold_terminal_performance_hourly`.
+- **Column-level security (CLS):** apply policy tags to sensitive synthetic fields such as synthetic customer contact fields, loyalty tier, free-text feedback, or operational notes.
+- **Dynamic data masking:** mask synthetic contact-like fields or feedback excerpts for lower-privilege demo users.
+- **Authorized views:** expose selected gold marts to BI users while preserving underlying RLS/CLS behavior.
+
+Implementation caveat: BigQuery column-level access control uses policy tags and schema annotations. Google Cloud docs note that `CREATE TABLE` DDL cannot specify policy tags directly, so implementation may need Terraform, `bq` schema updates, or API-based schema updates rather than pure Dataform SQLX for policy-tag assignment.
+
+Keep all security-demo data synthetic. Do not introduce real passenger PII.
+
 ---
 
 ## 12. Cloud Composer Orchestration
@@ -724,6 +739,7 @@ The implementation is complete when:
 - [ ] Gold marts answer the business questions.
 - [ ] Lineage can be viewed or documented clearly.
 - [ ] Composer DAG orchestrates the end-to-end run and invokes Dataform by stage/tag or workflow invocation.
+- [ ] Phase 2 governance backlog documents RLS, CLS/policy tags, dynamic masking, and authorized views.
 - [ ] README includes setup, run, validation, teardown, and troubleshooting instructions.
 - [ ] No real PII, secrets, credentials, or proprietary airport data are committed.
 
@@ -772,6 +788,12 @@ Key references:
 - Gemini sentiment tutorial: https://docs.cloud.google.com/bigquery/docs/generate-text-tutorial-gemini
 - Composer lineage integration: https://docs.cloud.google.com/composer/docs/composer-3/lineage-integration
 - Dataplex / Knowledge Catalog overview: https://docs.cloud.google.com/dataplex/docs/catalog-overview
+- Google Cloud medallion architecture overview: https://cloud.google.com/discover/what-is-medallion-architecture
+- Google Cloud Lakehouse key concepts: https://docs.cloud.google.com/lakehouse/docs/key-concepts
+- BigQuery row-level security intro: https://docs.cloud.google.com/bigquery/docs/row-level-security-intro
+- BigQuery column-level access control intro: https://docs.cloud.google.com/bigquery/docs/column-level-security-intro
+- BigQuery column-level access control guide: https://docs.cloud.google.com/bigquery/docs/column-level-security
+- BigQuery authorized views: https://docs.cloud.google.com/bigquery/docs/authorized-views
 
 ---
 

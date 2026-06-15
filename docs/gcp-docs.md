@@ -112,6 +112,38 @@ This file maps the demo design to official Google Cloud docs. Implementation age
   https://docs.cloud.google.com/dataplex/docs/reuse-data-quality-rules  
   Use for: optional governance-driven data quality rules and rule templates.
 
+## Medallion / lakehouse architecture
+
+- Google Cloud medallion architecture overview  
+  https://cloud.google.com/discover/what-is-medallion-architecture  
+  Use for: bronze/silver/gold definitions, Cloud Storage as raw/bronze landing zone, BigQuery as silver/gold engine, Spark for heavy transforms, Dataform for transformations, Composer for orchestration/governance.
+
+- Google Cloud Lakehouse key concepts  
+  https://docs.cloud.google.com/lakehouse/docs/key-concepts  
+  Use for: medallion architecture in Google Cloud Lakehouse, open formats such as Apache Iceberg, BigQuery serving gold layer, open interoperability between Spark and BigQuery.
+
+- Google Cloud data lakehouse overview  
+  https://cloud.google.com/solutions/data-lakehouse  
+  Use for: open and agentic lakehouse positioning, BigQuery/Spark/Knowledge Catalog lakehouse story.
+
+## BigQuery governance: RLS, CLS, masking, and authorized views
+
+- BigQuery row-level security introduction  
+  https://docs.cloud.google.com/bigquery/docs/row-level-security-intro  
+  Use for: row access policies, when to use RLS versus authorized views or separate tables.
+
+- BigQuery column-level access control introduction  
+  https://docs.cloud.google.com/bigquery/docs/column-level-security-intro  
+  Use for: policy tags, taxonomy workflow, enforcement model, interaction with dataset ACLs.
+
+- BigQuery column-level access control guide  
+  https://docs.cloud.google.com/bigquery/docs/column-level-security  
+  Use for: implementation options and caveat that `CREATE TABLE` DDL cannot specify policy tags directly.
+
+- BigQuery authorized views  
+  https://docs.cloud.google.com/bigquery/docs/authorized-views  
+  Use for: exposing selected data products while preserving underlying RLS/CLS behavior.
+
 ## Implementation reminder
 
 If implementation behavior differs from this plan, prefer the current official docs over this README and update the README with the exact reason.
