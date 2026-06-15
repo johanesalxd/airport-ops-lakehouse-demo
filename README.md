@@ -1,10 +1,41 @@
 # Airport Operations Lakehouse Demo on Google Cloud
 
-> **Status:** Planning blueprint for implementation.  
-> **Audience:** OpenCode / implementation agents / Google Cloud data engineers.  
-> **Goal:** Build a generic, public-safe airport operations lakehouse demo using Google Cloud services: Cloud Storage, BigQuery, BigLake, BigQuery Spark stored procedures, Dataform, Gemini remote models, Dataplex / Knowledge Catalog lineage, and Cloud Composer.
+> **Status:** Implemented MVP (Composer → Dataform → Spark/Gemini → atomic star schema + semantic views). Streaming, RLS/CLS, and data-insights remain as documented backlog.  
+> **Audience:** Google Cloud data engineers / workshop attendees.  
+> **Goal:** A generic, public-safe airport operations lakehouse demo using Cloud Storage, BigQuery, BigLake, BigQuery Spark stored procedures, Dataform, Gemini remote models, Dataplex / lineage, and Cloud Composer.
 
-This repository is intentionally generic. It must not use real airport data, real passenger data, proprietary Changi Airport data, logos, route schedules, or operationally sensitive details. All sample data must be synthetic.
+This repository is intentionally generic. It uses **only synthetic data** — no real airport, passenger, or proprietary data.
+
+---
+
+## 0. Quickstart (built demo)
+
+The transformation logic lives in the companion repo
+[`airport-ops-lakehouse-dataform`](https://github.com/johanesalxd/airport-ops-lakehouse-dataform)
+(the Dataform project must sit at a Git repo root for the GCP Dataform repository
++ Composer operators to use it).
+
+```bash
+cp .env.example .env          # defaults target the demo project
+source .env
+bash scripts/bootstrap.sh     # datasets, GCS bucket, service account, IAM (idempotent)
+bash scripts/upload_demo_data.sh 3 42   # generate + upload 3 days of synthetic data
+```
+
+Then trigger the **`airport_ops_lakehouse`** DAG in Cloud Composer
+(`dev-airflow`). It compiles the Dataform repo and runs it stage by stage
+(`setup → ingestion → silver → gold → semantic → quality`).
+
+Key docs:
+- [`docs/architecture.md`](docs/architecture.md) — the built architecture
+- [`docs/semantic-layer.md`](docs/semantic-layer.md) — **Gold layer vs semantic layer** (the design decision)
+- [`docs/why-dataform-not-python.md`](docs/why-dataform-not-python.md)
+- [`docs/demo-script.md`](docs/demo-script.md) — the workshop runbook
+
+> **Design decision:** the gold layer is an **atomic conformed star schema**.
+> Roll-ups are **semantic views** computed at query time (swappable for
+> Looker/AtScale/Cube). Heavy transformation lives in Dataform; the semantic
+> layer only aggregates. See `docs/semantic-layer.md`.
 
 ---
 
@@ -198,27 +229,39 @@ Models:
 8. `slv_customer_feedback_enriched`
    - multilingual feedback translated and classified with Gemini
 
-### 6.3 Gold layer
+### 6.3 Gold layer — atomic conformed star schema
 
 Dataset: `airport_gold`
 
-Gold marts are business-ready analytics products.
+Gold is modelled at the **finest (atomic) grain** as a Kimball star schema — NOT
+pre-aggregated, use-case-specific marts. Roll-ups are pushed to the semantic
+layer (§6.4). See [`docs/semantic-layer.md`](docs/semantic-layer.md) for why.
 
-1. `gold_airport_operations_daily`
-   - daily operational KPIs
-   - total flights, delay rate, average delay, passenger volume, baggage SLA, average wait time
+Conformed dimensions:
 
-2. `gold_terminal_performance_hourly`
-   - terminal/hour congestion, passenger movement, wait time, gate utilization
+1. `dim_terminal`
+2. `dim_airline`
+3. `dim_date`
 
-3. `gold_flight_disruption_impact`
-   - delayed flights with downstream passenger, baggage, gate, and commercial impact
+Atomic facts:
 
-4. `gold_baggage_service_quality`
-   - baggage journey SLA, missing scans, delayed bag risk
+4. `fct_flight` — one row per flight (partitioned by date, clustered by terminal/airline)
+5. `fct_baggage` — one row per bag (orphans quarantined)
+6. `fct_feedback` — one row per feedback, with Gemini-derived attributes
 
-5. `gold_passenger_experience_insights`
-   - Gemini-derived sentiment/topic/urgency, passenger experience trends, top complaint categories
+Plus `gold_data_quality_summary` — counts of caught/quarantined anomalies, so the
+pipeline stays green while governance is visible.
+
+### 6.4 Semantic layer — query-time roll-up
+
+Dataset: `airport_semantic` (BigQuery **views**, nothing materialised):
+
+1. `sem_airport_operations_daily` — daily KPIs over `fct_flight` + `fct_baggage`
+2. `sem_terminal_performance_hourly` — terminal × hour congestion
+3. `sem_passenger_experience` — sentiment/urgency roll-up over `fct_feedback`
+
+Each view is a `GROUP BY` over the atomic facts. In production, replace these
+views with Looker / AtScale / Cube — the star schema underneath is unchanged.
 
 ---
 

@@ -1,0 +1,119 @@
+# Demo script — Airport Operations Lakehouse (15–25 min)
+
+A "concept then live" runbook for the workshop. Project:
+`johanesa-playground-326616`, region `us-central1`.
+
+## 0. One-time seed (before the session)
+
+```bash
+cd airport-ops-lakehouse-demo
+cp .env.example .env            # values are already correct for the demo project
+source .env
+bash scripts/bootstrap.sh       # datasets, bucket, SA, IAM (idempotent)
+bash scripts/upload_demo_data.sh 3 42   # generate + upload 3 days of synthetic data
+```
+
+The Dataform GCP repository, GitHub connection, and Composer DAG are already
+deployed. Confirm raw data landed:
+
+```bash
+gcloud storage ls gs://airport-ops-demo-605626490127/raw/
+```
+
+## 1. Set the scene (2 min) — concept
+
+- Airport operations data is mixed-format and siloed: flights (CSV), events
+  (JSON), baggage (Parquet), sensors (gzip CSV), security (nested JSON),
+  feedback (multilingual JSON).
+- Goal: a governed, analytics- and AI-ready lakehouse with lineage from raw file
+  to KPI — and a clean foundation for a semantic layer.
+
+## 2. Show the source files (1 min) — live
+
+```bash
+gcloud storage ls -r gs://airport-ops-demo-605626490127/raw/ | head
+```
+
+Point out the six formats and the `dt=YYYY-MM-DD` partitioning.
+
+## 3. Architecture (3 min) — concept
+
+Open `docs/architecture.md`. Walk the medallion flow and emphasise the layer
+split:
+
+- **Dataform** = transformation (bronze → silver → gold atomic star schema)
+- **Semantic views** = roll-up at query time (swap for Looker/AtScale/Cube)
+- **Spark stored procedures** = the messy ingestion, called from Dataform
+- **Composer** = the outer orchestrator
+
+## 4. Why Dataform, not Python? (2 min) — concept
+
+Use `docs/why-dataform-not-python.md`. Show `includes/metrics.js` (logic once)
+and an `assertions` block. "Declarative graph + tests + lineage for free; Spark
+is called from Dataform for the non-SQL work."
+
+## 5. Run it end-to-end from Airflow (5 min) — live
+
+- Open the Composer **`dev-airflow`** Airflow UI → DAG `airport_ops_lakehouse`.
+- Trigger it. Watch the stages: `compile_repo → setup → ingestion → silver →
+  gold → semantic → quality → publish_run_summary`.
+- While it runs, open the **Dataform** page in the console → the repository →
+  show the **compiled graph** (dependency DAG) and the tags.
+- In **BigQuery → Job history**, point out a Spark procedure run and the
+  `AI.GENERATE_TEXT` job.
+
+## 6. Show the results (4 min) — live in BigQuery
+
+Bronze metadata:
+
+```sql
+SELECT _source_format, _batch_id, COUNT(*)
+FROM `johanesa-playground-326616.airport_bronze.brz_flight_schedules`
+GROUP BY 1, 2;
+```
+
+Gemini multilingual enrichment:
+
+```sql
+SELECT source_language, detected_language, sentiment, urgency, topic,
+       english_translation
+FROM `johanesa-playground-326616.airport_silver.slv_customer_feedback_enriched`
+LIMIT 15;
+```
+
+The semantic layer (this is the key moment):
+
+```sql
+-- A view. Open the definition: it is a GROUP BY over the atomic fct_flight.
+SELECT * FROM `johanesa-playground-326616.airport_semantic.sem_airport_operations_daily`;
+SELECT * FROM `johanesa-playground-326616.airport_semantic.sem_passenger_experience`
+WHERE date_key = (SELECT MAX(date_key) FROM `johanesa-playground-326616.airport_semantic.sem_passenger_experience`);
+```
+
+Say: *"This roll-up is logical, computed on read. In production you replace this
+view with Looker/AtScale/Cube — the atomic gold underneath doesn't change."*
+
+## 7. Governance & data quality (3 min) — live
+
+```sql
+SELECT * FROM `johanesa-playground-326616.airport_gold.gold_data_quality_summary`
+ORDER BY issue_count DESC;
+```
+
+The pipeline stayed green **and** caught the planted anomalies (negative counts,
+orphan baggage, gate double-bookings, missing scans). Mention assertions are real
+gates in the `quality` stage. Show lineage in **Dataplex / BigQuery lineage**
+from raw → bronze → gold.
+
+## 8. Close (2 min) — concept
+
+- Transformation (Dataform) vs semantics (views/Looker) — clean separation.
+- Spark for messy ingestion, called from Dataform, orchestrated by Composer.
+- Extensible: RLS/CLS, Pub/Sub streaming, continuous queries, data insights
+  (documented backlog in the README).
+
+## Teardown (after)
+
+```bash
+source .env && bash scripts/teardown.sh
+```
