@@ -82,9 +82,11 @@ A re-run is always safe — it converges to the same state, no duplicates:
 
 - Native loads use `LOAD DATA OVERWRITE`.
 - Spark stored procedures write with `.mode("overwrite")`.
-- BigLake table / Spark procs / Gemini model use `CREATE OR REPLACE`.
-- All bronze/silver/gold tables are Dataform `type: "table"` → `CREATE OR REPLACE
-  TABLE`; semantic views are `CREATE OR REPLACE VIEW`.
+- External tables (BigLake Parquet + the plain feedback JSON-column table), Spark
+  procs, and the Gemini model use `CREATE OR REPLACE`.
+- Bronze/silver/gold tables are Dataform `type: "table"` → `CREATE OR REPLACE
+  TABLE`; semantic views and the `brz_customer_feedback` bronze view are
+  `CREATE OR REPLACE VIEW`.
 - The synthetic generator is deterministic (fixed seed); upload uses
   `gcloud storage rsync`.
 

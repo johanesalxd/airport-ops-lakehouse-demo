@@ -34,11 +34,20 @@ consumption. Following it is a recommended best practice, not a requirement.
 - **Rule:** do *not* apply business logic here. Bronze is the reproducible,
   auditable record of what arrived. If a downstream layer is wrong, you can
   always rebuild it from bronze without re-reading the source.
-- **In this demo:** `airport_bronze.brz_*`, one table per source, fed by native
-  loads, the BigLake external table, and the Spark stored procedures. Note we
-  *type* bronze (a BigQuery-flavoured choice for a clean demo); the strictest
-  reading of the pattern keeps fields as raw strings/`VARIANT` to survive schema
-  drift. We preserve raw fidelity either way — no rows are dropped or reshaped.
+- **In this demo:** `airport_bronze.brz_*`, one per source, fed by native loads,
+  the BigLake external table, and the Spark stored procedures. Note we *type*
+  bronze (a BigQuery-flavoured choice for a clean demo); the strictest reading of
+  the pattern keeps fields as raw strings/`VARIANT` to survive schema drift. We
+  preserve raw fidelity either way — no rows are dropped or reshaped.
+- **One deliberate exception — `brz_customer_feedback`:** it is a **view**, not a
+  table, sitting directly over a plain external table that maps the feedback
+  NDJSON to a single native `JSON` column. This shows off BigQuery's `JSON` type
+  (query `payload.feedback_text` with no parsing step) — but it's a teaching
+  **anti-pattern for serving**: a non-materialised view over external,
+  row-oriented JSON re-reads and re-parses the raw text on every query, with no
+  column pruning, unlike a materialised native table or a columnar format
+  (Parquet, as the baggage source uses). "Just because you can, doesn't mean you
+  should." Production: materialise it like the other bronze tables.
 
 ### Silver — "make it trustworthy and conformed"
 

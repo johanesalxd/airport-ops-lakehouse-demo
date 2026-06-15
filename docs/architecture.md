@@ -11,8 +11,9 @@ behind the data model (medallion, star schema vs semantic layer), see
 |---|---|
 | **Cloud Storage** | Raw landing zone for the six source files, partitioned `dt=YYYY-MM-DD`. |
 | **BigQuery** | The lakehouse engine — storage + compute for every layer. |
-| **BigLake** | A governed external table over the Parquet baggage files. |
-| **BigQuery Spark stored procedures** | Serverless PySpark, called via SQL `CALL`, for gzip CSV, nested JSON, and multilingual JSON. |
+| **BigLake** | A governed external table over the columnar Parquet baggage files. |
+| **External table (plain) + BigQuery `JSON` type** | Customer-feedback NDJSON mapped to a single native `JSON` column; bronze reads it as a non-materialised view (deliberate anti-pattern). |
+| **BigQuery Spark stored procedures** | Serverless PySpark, called via SQL `CALL`, for gzip CSV and nested JSON. |
 | **Dataform** | The transformation layer: SQL dependency graph, bronze/silver/gold, assertions, docs, lineage. |
 | **BigQuery ML remote model (Gemini)** | `AI.GENERATE_TEXT` translation + classification of feedback. |
 | **Cloud Composer (Airflow)** | The outer orchestrator; drives Dataform via the native operators. |
@@ -33,12 +34,12 @@ flowchart LR
   end
 
   subgraph SPARK[Serverless BigQuery Spark stored procedures]
-    SP[gz CSV / nested JSON / feedback JSON]
+    SP[gz CSV / nested JSON]
   end
 
   subgraph DF[Dataform - transformation]
     direction TB
-    OPS[operations: native loads, BigLake ext table, Spark CALLs, Gemini model] --> BRZ[bronze: typed + ingestion metadata]
+    OPS[operations: native loads, BigLake Parquet ext table, plain external JSON-column table, Spark CALLs, Gemini model] --> BRZ[bronze: typed + ingestion metadata]
     BRZ --> SLV[silver: conformed + Gemini enrichment]
     SLV --> GOLD[gold: ATOMIC star schema]
   end
@@ -54,7 +55,7 @@ flowchart LR
   A3 --> OPS
   A4 --> SP --> OPS
   A5 --> SP
-  A6 --> SP
+  A6 --> OPS
   GEM[BigQuery ML remote model - Gemini] --> SLV
   GOLD --> V1
   GOLD --> V2
@@ -76,7 +77,13 @@ The point of six sources is to show *the right ingestion tool per format*.
 | 3 | baggage_events | Parquet | **BigLake external table** | `op_create_biglake_baggage` |
 | 4 | passenger_flow | gzip CSV | **Spark stored procedure** | `op_call_sp_passenger_flow` |
 | 5 | security_wait_times | nested JSON | **Spark stored procedure** | `op_call_sp_security_wait` |
-| 6 | customer_feedback | multilingual JSON | **Spark proc → Gemini** | `op_call_sp_customer_feedback` |
+| 6 | customer_feedback | NDJSON | **Plain external table → native `JSON` column** (bronze = view; anti-pattern) | `op_create_ext_customer_feedback` |
+
+Note: sources 1–2 use native loads, source 3 a BigLake external table over
+**columnar** Parquet, sources 4–5 serverless Spark, and source 6 a **plain**
+external table over **row-oriented** NDJSON exposing a single native `JSON`
+column. Gemini enrichment of feedback happens later, in silver
+(`slv_customer_feedback_enriched`), independent of how bronze is loaded.
 
 The deterministic generator (`scripts/generate_demo_data.py`, fixed seed) also
 plants realistic anomalies — a gate double-booking, an orphan baggage event, a
@@ -89,7 +96,8 @@ assertions and the data-quality summary have something to catch.
 |---|---|---|
 | Orchestration | Cloud Composer | Outer DAG, stage sequencing, run summary |
 | Transformation | Dataform | SQL graph, bronze/silver/gold, assertions, docs, lineage |
-| Heavy ingestion | BigQuery Spark stored procedures | gzip CSV, nested JSON, multilingual JSON |
+| Heavy ingestion | BigQuery Spark stored procedures | gzip CSV, nested JSON |
+| External tables | BigLake (Parquet) + plain external (`JSON` column) | columnar baggage; row-oriented feedback JSON |
 | AI enrichment | BigQuery ML remote model (Gemini) | translate + classify feedback |
 | Storage/compute | BigQuery + BigLake + Cloud Storage | tables, external tables, raw files |
 | Semantic layer | BigQuery views (→ Looker/AtScale/Cube) | query-time roll-up, metric definitions |
@@ -201,7 +209,7 @@ Stages, in order — one Dataform tag each:
 
 ```
 compile_repo
-  → setup       (Spark procs, BigLake ext table, Gemini model)
+  → setup       (Spark procs, BigLake Parquet ext table, plain external JSON-column table, Gemini model)
   → ingestion   (native loads + Spark CALLs into raw tables)
   → bronze      (typed bronze + ingestion metadata)
   → silver      (conformed + Gemini enrichment)
@@ -235,10 +243,38 @@ LANGUAGE PYTHON AS R"""
 """
 ```
 
-Parameters are read inside the procedure from `BIGQUERY_PROC_PARAM.*`. The three
-procedures handle passenger_flow (gzip CSV), security_wait_times (nested JSON),
-and customer_feedback (multilingual JSON). They are created in the `setup` stage
-and `CALL`ed in the `ingestion` stage.
+Parameters are read inside the procedure from `BIGQUERY_PROC_PARAM.*`. The two
+procedures handle passenger_flow (gzip CSV) and security_wait_times (nested
+JSON). They are created in the `setup` stage and `CALL`ed in the `ingestion`
+stage.
+
+## External tables (and a deliberate anti-pattern)
+
+The demo uses two external tables, to contrast a good and a questionable use:
+
+- **`raw_baggage_events` (BigLake, Parquet)** — `op_create_biglake_baggage`. A
+  governed external table over **columnar** files. This is the *good* case:
+  columnar layout enables column pruning and reasonable scan performance.
+- **`raw_customer_feedback` (plain external, NDJSON → single `JSON` column)** —
+  `op_create_ext_customer_feedback`. Each whole JSON line is mapped to one native
+  `JSON` column by reading the file as `format='CSV'` with a **tab delimiter** and
+  **quoting disabled** (so the commas/quotes inside the JSON aren't split):
+
+  ```sql
+  CREATE OR REPLACE EXTERNAL TABLE `…airport_ops_control.raw_customer_feedback` ( payload JSON )
+  OPTIONS ( format='CSV', field_delimiter='\t', quote='', uris=['gs://…/customer_feedback/*/customer_feedback.jsonl'] )
+  ```
+
+  The bronze model `brz_customer_feedback` is then a **view** (not a table)
+  directly over this external source, projecting the JSON column to typed columns
+  with field access (`JSON_VALUE(payload.feedback_text)`, `INT64(payload.rating)`).
+
+  This is intentionally an **anti-pattern for serving**: a non-materialised view
+  over external, **row-oriented** JSON re-reads and re-parses the raw text on
+  every query, with no clustering or column pruning — much slower than a
+  materialised native (columnar) table. It demonstrates BigQuery's native `JSON`
+  type and "just because you can, doesn't mean you should". A production design
+  would materialise this bronze layer as a native table.
 
 ## Gemini enrichment
 

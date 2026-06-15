@@ -51,7 +51,8 @@ split:
 
 - **Dataform** = transformation (bronze → silver → gold atomic star schema)
 - **Semantic views** = roll-up at query time (swap for Looker/AtScale/Cube)
-- **Spark stored procedures** = the messy ingestion, called from Dataform
+- **Spark stored procedures** = the messy ingestion (gzip CSV, nested JSON), called from Dataform
+- **External tables** = baggage Parquet via BigLake (good, columnar) vs feedback NDJSON as a single `JSON` column behind a non-materialised view (the "you can, but shouldn't" anti-pattern)
 - **Composer** = the outer orchestrator
 
 ## 4. Why Dataform, not Python? (2 min) — concept
@@ -84,7 +85,25 @@ FROM `johanesa-playground-326616.airport_bronze.brz_flight_schedules`
 GROUP BY 1, 2;
 ```
 
-Gemini multilingual enrichment:
+The BigQuery `JSON` type + the external-table anti-pattern (feedback):
+
+```sql
+-- Landing: a PLAIN EXTERNAL table over NDJSON, each line in ONE native JSON column.
+SELECT payload FROM `johanesa-playground-326616.airport_ops_control.raw_customer_feedback` LIMIT 3;
+
+-- Bronze is a VIEW over it: project the JSON column by field access, no PARSE_JSON.
+SELECT feedback_id, JSON_VALUE(payload.source_language) AS lang,
+       payload.feedback_text AS text_json, INT64(payload.rating) AS rating
+FROM `johanesa-playground-326616.airport_bronze.brz_customer_feedback` LIMIT 5;
+```
+
+Say: *"The native `JSON` type lets us query `payload.feedback_text` directly. But
+this bronze is a non-materialised view straight over external, row-oriented JSON —
+every query re-scans and re-parses the text. It works, but it's not how you'd
+serve at scale; contrast it with the columnar Parquet baggage table. Just because
+you can, doesn't mean you should — you'd materialise this as a native table."*
+
+Gemini multilingual enrichment (still happens in silver, regardless of ingestion):
 
 ```sql
 SELECT source_language, detected_language, sentiment, urgency, topic,

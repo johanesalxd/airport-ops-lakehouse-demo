@@ -8,7 +8,8 @@ Generates 6 mixed-format source datasets that exercise every ingestion pattern:
   3. baggage_events      -> Parquet        (BigLake external table)
   4. passenger_flow      -> Gzip CSV       (BigQuery Spark stored procedure)
   5. security_wait_times -> Nested JSON    (BigQuery Spark stored procedure)
-  6. customer_feedback   -> Multilingual JSON (Spark proc + Gemini enrichment)
+  6. customer_feedback   -> Multilingual NDJSON (external table w/ JSON column
+                            -> non-materialised bronze view; Gemini enrichment in silver)
 
 Everything is synthetic and public-safe. A fixed seed makes the output
 deterministic so the demo is repeatable. The generator also plants a handful of
@@ -315,7 +316,7 @@ def main():
         "baggage_events": "parquet",
         "passenger_flow": "csv.gz",
         "security_wait_times": "json",
-        "customer_feedback": "json",
+        "customer_feedback": "jsonl",
     }
 
     for d in daterange(start, args.days):
@@ -339,7 +340,13 @@ def main():
         write_parquet(base("baggage_events", "parquet"), baggage)
         write_csv_gz(base("passenger_flow", "csv.gz"), flow)
         write_json(base("security_wait_times", "json"), security)
-        write_json(base("customer_feedback", "json"), feedback)
+        # Customer feedback is written as newline-delimited JSON (one object per
+        # line). It is ingested via a plain external table with a single native
+        # JSON column (format=CSV, tab delimiter, quoting disabled), then exposed
+        # by a non-materialised bronze view -- a deliberate anti-pattern (a view
+        # over external, row-oriented JSON is not performant vs a materialised or
+        # columnar table). See docs/design-philosophy.md.
+        write_jsonl(base("customer_feedback", "jsonl"), feedback)
 
         print(
             f"[{d.isoformat()}] schedules={len(schedules)} events={len(events)} "

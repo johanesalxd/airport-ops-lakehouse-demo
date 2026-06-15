@@ -16,8 +16,9 @@ end to end by **Cloud Composer**.
 ## What this demonstrates
 
 - **Mixed-format ingestion** with the *right tool per format*: native BigQuery
-  loads, a BigLake external table, and serverless **BigQuery Spark stored
-  procedures** for the messy/compressed/nested files.
+  loads, external tables (a BigLake table over columnar Parquet, and a plain
+  external table over NDJSON exposing a native **`JSON` column**), and serverless
+  **BigQuery Spark stored procedures** for the messy/compressed/nested files.
 - **Dataform as the transformation layer** — a declarative SQL dependency graph
   with tests (assertions), documentation, and lineage, calling Spark and Gemini.
 - **Gemini in BigQuery** — `AI.GENERATE_TEXT` over a remote model to translate
@@ -57,12 +58,13 @@ Questions the demo answers:
 ## Architecture at a glance
 
 ```
-6 synthetic sources (CSV, JSONL, Parquet, gz-CSV, nested JSON, multilingual JSON)
+6 synthetic sources (CSV, JSONL, Parquet, gz-CSV, nested JSON, multilingual NDJSON)
    │
    ▼  Cloud Storage raw landing  (dt=YYYY-MM-DD partitions)
    │
-   ▼  Dataform operations: native loads · BigLake ext table · Spark stored procs
-   ▼  BRONZE  typed + ingestion metadata
+   ▼  Dataform operations: native loads · external tables (BigLake Parquet +
+   ▼                       plain external JSON column) · Spark stored procs
+   ▼  BRONZE  typed + ingestion metadata  (feedback bronze = view over external JSON)
    ▼  SILVER  conformed/cleaned + Gemini feedback enrichment
    ▼  GOLD    ATOMIC star schema (dim_* + fct_*)
    ▼  SEMANTIC  views = query-time roll-up  (→ Looker / AtScale / Cube)
@@ -95,7 +97,16 @@ is the point.
 | 3 | `baggage_events` | Parquet | **BigLake** external table | `brz_baggage_events` |
 | 4 | `passenger_flow` | Gzip CSV | **Serverless Spark** stored proc | `brz_passenger_flow` |
 | 5 | `security_wait_times` | Nested JSON | **Serverless Spark** stored proc | `brz_security_wait` |
-| 6 | `customer_feedback` | Multilingual JSON | Spark proc **+ Gemini** enrichment | `brz_customer_feedback` |
+| 6 | `customer_feedback` | NDJSON (`.jsonl`) | **Plain external table → native `JSON` column**; bronze is a **view** (see note) | `brz_customer_feedback` (view) |
+
+> **Source 6 is a deliberate anti-pattern.** The feedback NDJSON is exposed as a
+> plain external table whose whole line lands in a single native **`JSON`**
+> column, and the bronze layer is a **non-materialised view** straight over it.
+> It works and reads cleanly (`payload.feedback_text`), but a view over external,
+> row-oriented JSON is **not performant** — every query re-scans and re-parses the
+> text, unlike a materialised native table or a columnar format (Parquet). Source
+> 3 (baggage) shows the *good* external-table case: columnar Parquet via BigLake.
+> Gemini enrichment still happens downstream in silver.
 
 All six land in Cloud Storage under `dt=YYYY-MM-DD/` partitions first (seeded by
 `scripts/upload_demo_data.sh`).
@@ -108,9 +119,9 @@ medallion layer (or a setup step), so the task list *is* the architecture.
 | Task | What it does | Key component | What to inspect |
 |---|---|---|---|
 | `compile_repo` | Compiles the Dataform Git repo to an execution graph; stamps `batchId = {{ run_id }}` | Dataform compilation API | Compiled graph in the Dataform UI |
-| `run_setup` | Creates the Gemini remote model + BigLake table, registers the Spark stored procedures | Dataform ops + BQ connections | Model, external table & procs exist |
-| `run_ingestion` | Native loads + CALLs the 3 Spark procs to land all 6 sources | Serverless Spark + BQ loads | The six `brz_*` tables populate |
-| `run_bronze` | Types the raw data and adds ingestion metadata (`_source_format`, `_batch_id`) | Dataform / BigQuery SQL | `brz_*` schema & metadata cols |
+| `run_setup` | Creates the Gemini remote model, the BigLake (Parquet) + plain external (JSON-column) tables, and registers the Spark stored procedures | Dataform ops + BQ connections | Model, external tables & procs exist |
+| `run_ingestion` | Native loads + CALLs the 2 Spark procs to land the file-based sources | Serverless Spark + BQ loads | The `raw_*` tables populate |
+| `run_bronze` | Types the raw data and adds ingestion metadata (`_source_format`, `_batch_id`); feedback bronze is a **view** projecting the external `JSON` column | Dataform / BigQuery SQL | `brz_*` schema & metadata cols |
 | `run_silver` | Conforms/cleans; **Gemini** translates + classifies multilingual feedback (sentiment, urgency, topic) | `AI.GENERATE_TEXT` | `slv_customer_feedback_enriched` |
 | `run_gold` | Builds the **atomic star schema** (3 dims, 3 facts); quarantines orphan records | Dataform SQL | `dim_*`, `fct_*` |
 | `run_semantic` | Query-time roll-up **views** — no data materialised | BigQuery views | 3 `sem_*` views |
@@ -221,7 +232,8 @@ Gemini enrichment in `airport_silver.slv_customer_feedback_enriched`, and
 
 | Area | Implemented |
 |---|---|
-| Mixed-format ingestion | native load, BigLake external table, 3 Spark stored procedures |
+| Mixed-format ingestion | native loads, BigLake external table (Parquet), plain external table with a native `JSON` column, 2 Spark stored procedures |
+| BigQuery `JSON` type | feedback NDJSON → single `JSON` column, queried by field access (`payload.feedback_text`); non-materialised bronze view as a deliberate anti-pattern |
 | Transformation | Dataform bronze → silver → gold, `includes/` DRY logic |
 | AI enrichment | Gemini remote model + `AI.GENERATE_TEXT` on multilingual feedback |
 | Data modelling | atomic conformed star schema (3 dims, 3 facts) |
