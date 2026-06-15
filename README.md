@@ -185,6 +185,7 @@ BigQuery data insights, and a BI dashboard. These are documented as next steps i
 | [`docs/design-philosophy.md`](docs/design-philosophy.md) | Medallion architecture; why bronze/silver/gold; **why gold is a star schema, not the semantic layer** |
 | [`docs/why-dataform-not-python.md`](docs/why-dataform-not-python.md) | What Dataform is and when to reach for Spark/Python instead |
 | [`docs/demo-script.md`](docs/demo-script.md) | The workshop runbook |
+| [`docs/operations.md`](docs/operations.md) | Runbook: **where logs live**, Composer 3 caveats, idempotency, known issues |
 | [`docs/roadmap.md`](docs/roadmap.md) | Governance, streaming, continuous queries, data insights |
 | [`docs/gcp-docs.md`](docs/gcp-docs.md) | Official Google Cloud documentation map |
 

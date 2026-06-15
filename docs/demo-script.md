@@ -67,7 +67,10 @@ is called from Dataform for the non-SQL work."
   silver → gold → semantic → quality → publish_run_summary`. The stages are the
   medallion layers — point that out as it runs.
 - While it runs, open the **Dataform** page in the console → the repository →
-  show the **compiled graph** (dependency DAG) and the tags.
+  show the **compiled graph** (dependency DAG) and the tags. Also open
+  **Workflow Execution Logs** — this is where the per-stage SQL actually executes
+  and where you debug failures (the Airflow task only shows orchestration state;
+  see [`operations.md`](operations.md) for the full "where logs live" guide).
 - In **BigQuery → Job history**, point out a Spark procedure run and the
   `AI.GENERATE_TEXT` job.
 
