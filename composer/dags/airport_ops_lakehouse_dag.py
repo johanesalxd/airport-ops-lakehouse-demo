@@ -40,7 +40,19 @@ SEMANTIC_DATASET = "airport_semantic"
 # Pipeline stages run in this order; each maps to a Dataform tag. Each stage runs
 # only the actions carrying its tag (transitive dependencies disabled), so the
 # medallion layers must each be their own stage — including `bronze`.
-STAGES = ["setup", "ingestion", "bronze", "silver", "gold", "semantic", "quality"]
+STAGES = [
+    "setup",
+    "ingestion",
+    "bronze",
+    "silver",
+    "gold",
+    "semantic",
+    "quality",
+    # Governance showcase: builds the self-contained staff_directory table and
+    # attaches RLS + CLS policies. Independent of the medallion flow (nothing
+    # reads staff_directory), so its access policies cannot affect the pipeline.
+    "security",
+]
 
 default_args = {
     "owner": "airport-demo",

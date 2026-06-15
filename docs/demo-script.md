@@ -154,11 +154,44 @@ Say: *"Gemini in BigQuery profiled the data and generated documentation + starte
 queries automatically — published to Knowledge Catalog for governance."* Note
 this is a separate Gemini-in-BigQuery feature (dataset insights are Preview).
 
+## 7c. (Optional) Fine-grained access: RLS + CLS (3 min) — live
+
+The `security` stage built a self-contained `airport_governance.staff_directory`
+table (synthetic — nothing in the pipeline reads it) with **row-level security**
+and **column masking** attached entirely from Dataform SQLX.
+
+First show the policies exist:
+
+```bash
+bq ls --row_access_policies \
+  johanesa-playground-326616:airport_governance.staff_directory
+```
+
+Then have two people (or impersonate the two groups) run the **same query** and
+compare:
+
+```sql
+-- bq-rls-cls-dataform-admin@  -> 6 rows, real ssn/email/salary, bank_account visible
+-- bq-rls-cls-dataform-sales@  -> 2 rows (Sales only), email "" / salary NULL /
+--                                ssn SHA256, and bank_account ERRORS (blocked)
+SELECT staff_id, name, email, department, salary, ssn
+FROM `johanesa-playground-326616.airport_governance.staff_directory`
+ORDER BY staff_id;
+```
+
+Say: *"Same query, same table — the result depends on who's asking. Rows are
+filtered by RLS; sensitive columns are masked or blocked by CLS data policies.
+No views, no copies, all declared in Dataform alongside the transformations."*
+
+> If the sales view still shows all rows/raw values, the data-policy IAM may need
+> a minute to propagate after the run — re-run the query.
+
 ## 8. Close (2 min) — concept
 
 - Transformation (Dataform) vs semantics (views/Looker) — clean separation.
 - Spark for messy ingestion, called from Dataform, orchestrated by Composer.
-- Extensible: RLS/CLS, Pub/Sub streaming, continuous queries, data insights
+- Governance built in: RLS + CLS/masking (the `security` stage), plus Gemini
+  auto-metadata. Extensible further: Pub/Sub streaming, continuous queries
   (documented backlog in the README).
 
 ## Teardown (after)

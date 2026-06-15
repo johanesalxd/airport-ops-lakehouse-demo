@@ -313,6 +313,24 @@ BigQuery             = WHERE compute + storage happen
 
 ---
 
+## Fine-grained access: RLS + CLS
+
+Same query, same table — **the result depends on who's asking.** All declared in Dataform SQLX (`security` stage), no views or copies.
+
+| Column | Sales group | Admin group |
+|---|---|---|
+| **Rows visible** | 2 (Sales dept) | 6 (all) |
+| `email` | masked `""` | actual |
+| `salary` | `NULL` | actual |
+| `ssn` | SHA256 | actual |
+| `bank_account` | ❌ blocked | actual |
+
+<span class="small">RLS = `ROW ACCESS POLICY`; CLS = SQL `DATA_POLICY` masking (no policy tags / Terraform). Privilege decided by `GRANT FINE_GRAINED_READ` to the group.</span>
+
+<span class="live">LIVE</span> &nbsp; Two identities run the **same** `SELECT` on `airport_governance.staff_directory` — compare rows + masked columns.
+
+---
+
 ## What's covered vs. what's next
 
 <div class="cols">

@@ -7,21 +7,39 @@ all of them is mapped in [`gcp-docs.md`](gcp-docs.md).
 
 ## 1. Governance: row-/column-level security & masking
 
-Add fine-grained access control as a second-phase governance story (synthetic
-data only — no real PII):
+Fine-grained access control as a governance story (synthetic data only — no real
+PII).
 
-- **Row-level security (RLS):** restrict terminal-level rows by role — e.g.
-  Terminal 1 operators only see `terminal_id = 'T1'` in
-  `sem_terminal_performance_hourly`.
-- **Column-level security (CLS):** apply policy tags to sensitive synthetic fields
-  (free-text feedback, contact-like fields, operational notes).
-- **Dynamic data masking:** mask those fields for lower-privilege demo users.
+**Implemented** as a self-contained showcase: a `security` Dataform stage builds
+`airport_governance.staff_directory` (a synthetic staff roster that *nothing* in
+the medallion pipeline reads, so its policies can't affect the main flow) and
+attaches:
+
+- **Row-level security (RLS):** `CREATE ROW ACCESS POLICY` — the admin group sees
+  all rows; the sales group sees only `department = 'Sales'`.
+- **Column-level security (CLS) + dynamic masking:** the modern SQL-based
+  `DATA_POLICY` approach — dual policies per column (`DATA_MASKING_POLICY` +
+  `RAW_DATA_ACCESS_POLICY`) attached via `ALTER COLUMN ... SET OPTIONS`, with
+  `GRANT FINE_GRAINED_READ` deciding who sees raw vs masked: `ssn`→SHA256,
+  `email`→default value, `salary`→NULL, and `bank_account` blocked entirely for
+  non-admins.
+
+> **Implementation note (updated):** BigQuery's *newer* SQL-based `DATA_POLICY`
+> column masking is authored **entirely in Dataform SQLX** — no policy tags,
+> Terraform, or out-of-band `bq`/API steps. (The older Data-Catalog *policy-tag*
+> mechanism did require those; this demo uses the SQL approach instead.) The
+> execution SA needs `bigquery.dataOwner` (RLS) + `bigquerydatapolicy.admin`
+> (data policies); group members need `bigquery.filteredDataViewer` +
+> `bigquery.jobUser` (granted by `bootstrap.sh`).
+
+Still open as future extensions:
+
+- Apply the same patterns to **pipeline** tables (e.g. RLS by `terminal_id` on
+  `fct_feedback` / `sem_terminal_performance_hourly`) — note this also requires
+  granting the Dataform execution SA a permissive row policy so its downstream
+  models don't read zero rows.
 - **Authorized views:** expose selected gold/semantic objects to BI users while
   preserving RLS/CLS underneath.
-
-Implementation note: BigQuery column-level access uses policy tags, and `CREATE
-TABLE` DDL can't assign them directly — so policy-tag assignment needs Terraform,
-`bq` schema updates, or the API rather than pure Dataform SQLX.
 
 ### Managed data quality (Dataplex auto data quality + profiling)
 

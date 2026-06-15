@@ -37,7 +37,7 @@ gcloud services enable \
 
 echo ">> Creating BigQuery datasets in ${REGION}"
 for DS in "${DS_BRONZE}" "${DS_SILVER}" "${DS_GOLD}" "${DS_SEMANTIC}" \
-          "${DS_AI}" "${DS_CONTROL}" "${DS_ASSERTIONS}"; do
+          "${DS_AI}" "${DS_CONTROL}" "${DS_ASSERTIONS}" "${DS_GOVERNANCE}"; do
   if bq --location="${REGION}" show --dataset "${PROJECT_ID}:${DS}" >/dev/null 2>&1; then
     echo "   - ${DS} (exists)"
   else
@@ -72,6 +72,29 @@ for ROLE in roles/bigquery.dataEditor roles/bigquery.jobUser \
   gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member="serviceAccount:${DATAFORM_SA_EMAIL}" --role="${ROLE}" \
     --condition=None >/dev/null
+done
+
+echo ">> Granting Dataform SA the RLS/CLS policy-creation roles (governance demo)"
+# Creating ROW ACCESS POLICYs needs rowAccessPolicies.create + setIamPolicy
+# (-> bigquery.dataOwner); creating + granting DATA_POLICYs needs
+# dataPolicies.* (-> bigquerydatapolicy.admin). dataEditor alone is insufficient.
+# Granted project-wide here for demo simplicity; see roadmap (public-release prep)
+# for scoping dataOwner to the governance dataset only.
+for ROLE in roles/bigquery.dataOwner roles/bigquerydatapolicy.admin; do
+  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${DATAFORM_SA_EMAIL}" --role="${ROLE}" \
+    --condition=None >/dev/null
+done
+
+echo ">> Granting the demo groups read access to RLS/CLS-protected tables"
+# Members need filteredDataViewer (query RLS tables; rows auto-filtered by the
+# policy grantee list) + jobUser (run queries). FINE_GRAINED_READ on the data
+# policies is granted by Dataform itself (cls_staff_directory.sqlx).
+for GROUP in "${ADMIN_GROUP}" "${SALES_GROUP}"; do
+  for ROLE in roles/bigquery.filteredDataViewer roles/bigquery.jobUser; do
+    gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+      --member="group:${GROUP}" --role="${ROLE}" --condition=None >/dev/null
+  done
 done
 
 echo ">> Granting Vertex AI access to the Gemini connection SA"
