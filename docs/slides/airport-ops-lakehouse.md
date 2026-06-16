@@ -377,3 +377,51 @@ Same query, same table — **the result depends on who's asking.** All declared 
 **Atomic gold** = one source of truth; roll up on read, never drill into a pre-aggregate
 
 <span class="small">Keep the finest grain, define metrics once, and the platform stays agile — and semantic-layer ready.</span>
+
+---
+
+<!-- _class: lead -->
+
+## Appendix · Two doors to one engine
+
+<span class="small">For the "how do analysts fit in?" question</span>
+
+---
+
+## Engineer door vs analyst door
+
+<div class="cols">
+<div class="pill">
+
+**Engineer door** (this demo)
+- Hand-written `.sqlx` in Git
+- Orchestrated by **Composer**
+- Reaches outside BigQuery (Spark, Gemini, governance)
+- Owns repo, IAM, schedules
+
+</div>
+<div class="pill">
+
+**Analyst door** (BQ Pipelines / Data Prep)
+- Visual, low-code, Gemini-assisted in BigQuery Studio
+- Scheduled by **Dataform-native cron**
+- Stays inside BigQuery
+- Natural home: gold → semantic
+
+</div>
+</div>
+
+**Same Dataform engine — different front door.** Decide by **persona + scope**, not by medallion layer.
+
+---
+
+## Consolidate vs Federate — and "promotion"
+
+| | **Consolidate** (default) | **Federate** (deliberate) |
+|---|---|---|
+| Analysts work in | the engineering repo | their own repo |
+| Dependencies | real `ref()` (one graph) | cross-repo `declaration` only |
+| Scheduling | engineering-owned | the analyst repo's own cron |
+| Promotion | **merge a PR** → normal node | stays separate by design |
+
+<span class="small">UI "create pipeline" spins up a *separate* Dataform repo with its own schedule — govern it: one PR-protected repo, every input a reviewed `declaration`, no shadow pipelines. **Promotion = re-land the generated SQL as a reviewed PR.**</span>

@@ -190,6 +190,65 @@ For what Dataform *is* (and when to use Spark/Python instead), see
 
 ---
 
+## Part 3 — Two doors to one engine (engineer-authored vs analyst-authored)
+
+A recurring source of confusion: **BigQuery Data Pipelines** and **BigQuery
+Data Preparation** (the visual, Gemini-assisted tools in BigQuery Studio) look
+like a *different* product from the Dataform this demo is built on. They are not.
+They are **the same Dataform engine behind a different front door.**
+
+| | **Engineer door** (this demo) | **Analyst door** (BQ Pipelines / Data Prep) |
+|---|---|---|
+| Authoring | Hand-written `.sqlx` in a Git repo | Visual, low-code, Gemini suggestions in BigQuery Studio |
+| Engine | **Dataform** | **Dataform** (same engine) |
+| Orchestrator | **Cloud Composer** (Airflow DAG) | **Dataform-native cron** (a *workflow configuration*) |
+| Persona | Data engineer | Data analyst doing light data engineering |
+| Best for | Cross-service, code-reviewed, reaches outside BigQuery | SQL-shaped transforms that stay inside BigQuery |
+
+So Data Prep / Pipelines is the **analyst's low-code on-ramp** to Dataform — and
+on the medallion, its natural home is the **silver-tail → gold → semantic** end
+(business logic, joins, KPIs, roll-ups), *not* the messy ingestion end (gzip,
+nested JSON, Spark, external/BigLake, governance), which stays engineer territory.
+
+> **The deciding factor is persona + scope of dependencies — not the medallion
+> layer.** Analyst, stays inside BigQuery, wants visual help → analyst door.
+> Engineer, version-controlled, reaches outside BigQuery → engineer door.
+
+### Consolidate vs Federate (the governance decision)
+
+The analyst door is permissive: clicking "create pipeline" in BigQuery Studio
+provisions a **brand-new, separate Dataform repository** with its **own schedule
+and service account** — *not* part of this repo and *not* run by our Composer.
+Left ungoverned, that fragments fast (shadow repos, ad-hoc schedules off random
+CSVs, no PR history, scattered logs). There are two valid postures:
+
+| | **Option 1 — Consolidate (production default)** | **Option 2 — Federate (deliberate exception)** |
+|---|---|---|
+| Where analysts work | A **workspace inside the engineering repo** | Their **own** Dataform repo |
+| Dependencies | Real `ref()` (one compilation graph) | Cross-repo **`declaration`** only (reference, not ordering) |
+| Scheduling | Engineering-owned (Composer, or tag-scoped workflow configs) | The analyst repo's own Dataform cron |
+| Promotion | Merge a PR → it's a normal graph node | N/A — stays separate by design |
+| Use when | Output feeds production / other teams depend on it | Self-contained, analyst-local mart that should *not* couple to the engineering release train |
+| Cost | Requires repo discipline (PRs, reviews) | Accepts a manual cross-repo seam + duplicate logs |
+
+**Recommendation:** default to **Consolidate** — one PR-protected repo, analysts
+get workspaces in it, every input is a reviewed `declaration`, and prod is gated
+behind release + workflow configs the engineers own. Use **Federate** only as a
+conscious choice for genuinely independent analyst marts, never by accident.
+
+The concrete repo mechanics (separate repo vs single-repo tags + workflow
+configs, cross-repo declarations, and how to *promote* a UI-built pipeline into
+this repo) are in
+[`architecture.md` → Two-repo design](architecture.md#two-repo-design). The
+dev → prod SDLC model is in [`roadmap.md` → CI/CD & environments](roadmap.md).
+
+Reference docs:
+[Manage the Dataform code lifecycle](https://docs.cloud.google.com/dataform/docs/managing-code-lifecycle) ·
+[Schedule runs (workflow configurations)](https://docs.cloud.google.com/dataform/docs/schedule-runs) ·
+[Declare a data source](https://docs.cloud.google.com/dataform/docs/declare-source).
+
+---
+
 ## Sources
 
 - Google Cloud — *What is medallion architecture?*

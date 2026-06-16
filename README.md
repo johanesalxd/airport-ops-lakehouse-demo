@@ -172,12 +172,13 @@ airport-ops-lakehouse-demo/
   composer/dags/
     airport_ops_lakehouse_dag.py    # the end-to-end orchestration DAG
   docs/
+    README.md                       # documentation index — start here
     architecture.md                 # tech stack + infrastructure
     design-philosophy.md            # medallion + star schema vs semantic layer
     why-dataform-not-python.md
     demo-script.md                  # the workshop runbook
+    operations.md                   # runbook: logs, caveats, known issues
     roadmap.md                      # what's next (governance, streaming, insights)
-    gcp-docs.md                     # official GCP documentation map
     slides/                         # Marp workshop deck (+ README for building it)
   sample_data/                      # one day of generated output, for reference
 ```
@@ -289,16 +290,21 @@ insights** is available as an optional script (see *How to run* below).
 
 ## Documentation
 
+Start at the **[`docs/` index](docs/README.md)**, which maps each doc to the
+question it answers. In brief:
+
 | Doc | What it covers |
 |---|---|
-| [`docs/architecture.md`](docs/architecture.md) | Tech stack, infrastructure, the two-repo design, connections, DAG, Spark, Gemini |
-| [`docs/design-philosophy.md`](docs/design-philosophy.md) | Medallion architecture; why bronze/silver/gold; **why gold is a star schema, not the semantic layer** |
+| [`docs/README.md`](docs/README.md) | **Documentation index — start here** |
+| [`docs/architecture.md`](docs/architecture.md) | Tech stack, infrastructure, the two-repo design (+ the third path: UI-created pipelines), connections, DAG, Spark, Gemini |
+| [`docs/design-philosophy.md`](docs/design-philosophy.md) | Medallion architecture; **why gold is a star schema, not the semantic layer**; **two doors to one engine** (engineer vs analyst pipelines) |
 | [`docs/why-dataform-not-python.md`](docs/why-dataform-not-python.md) | What Dataform is and when to reach for Spark/Python instead |
-| [`docs/demo-script.md`](docs/demo-script.md) | The workshop runbook |
+| [`docs/demo-script.md`](docs/demo-script.md) | The workshop runbook (checklist, live flow, Q&A) |
 | [`docs/operations.md`](docs/operations.md) | Runbook: **where logs live**, Composer 3 caveats, idempotency, known issues |
-| [`docs/roadmap.md`](docs/roadmap.md) | Governance, streaming, continuous queries, data insights |
-| [`docs/gcp-docs.md`](docs/gcp-docs.md) | Official Google Cloud documentation map |
+| [`docs/roadmap.md`](docs/roadmap.md) | Governance, streaming, continuous queries, data insights, CI/CD environments |
 | [`docs/slides/README.md`](docs/slides/README.md) | The Marp workshop deck and how to build/update it |
+
+Official Google Cloud docs are linked inline where each topic is discussed.
 
 ---
 

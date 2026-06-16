@@ -249,6 +249,25 @@ No views, no copies, all declared in Dataform alongside the transformations."*
   Composer = **when** (scheduling, retries, alerts); Dataform = **what** (models,
   order, tests, lineage); Spark = **how** for messy ingestion; BigQuery = **where**
   compute happens. Clean separation of concerns.
+- **"If our analysts use BigQuery Data Prep / Pipelines, how does that fit — who
+  owns what, and how does it get into this repo?"**
+  Same Dataform engine, different front door: code + Composer (engineers) vs the
+  visual UI + Dataform-native cron (analysts). Engineers own the repo lifecycle,
+  release/workflow configs, IAM and ingestion (bronze/silver); analysts author
+  the gold/semantic business logic. **Promotion = a PR:** you take the SQL the UI
+  generated and land it as a reviewed SQLX/declaration in the engineering repo,
+  where it becomes a normal `ref()` node. Default posture is **Consolidate** — one
+  PR-protected repo, analysts get workspaces in it.
+- **"What stops an analyst scheduling a pipeline off a random CSV in their own
+  playground?"**
+  Governance, not magic. A Dataform model can only read data via a reviewed
+  `type: "declaration"` source, so an undeclared CSV simply isn't a production
+  input. The risk is real though: the UI's "create pipeline" spins up a *separate*
+  Dataform repo with its own schedule (not our Composer) and, across repos, you
+  only get a cross-repo `declaration` (a reference, **not** automatic ordering).
+  That's exactly why we Consolidate into one repo and discourage shadow pipelines.
+  Full detail in `docs/design-philosophy.md` (Part 3) and `docs/architecture.md`
+  (Two-repo design → third path).
 
 ## Teardown (after)
 

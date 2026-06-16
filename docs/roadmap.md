@@ -4,8 +4,8 @@ The MVP is a clean, governed batch lakehouse — and it already includes a
 fine-grained-access **governance showcase** (RLS/CLS, §1) and optional
 **automated data insights** (§4). The items below are the remaining natural next
 steps, kept out of the critical path so the core demo stays simple. Each is
-grounded in current Google Cloud capabilities; official documentation for all of
-them is mapped in [`gcp-docs.md`](gcp-docs.md).
+grounded in current Google Cloud capabilities, with the relevant official Google
+Cloud documentation linked inline at each item.
 
 > **Already implemented (no longer roadmap):** §1 Governance (RLS/CLS & masking)
 > and §4 Automated metadata (data insights). They are kept in this doc, marked
@@ -204,6 +204,31 @@ lifecycle:
 - Gate promotion on pull requests (`main` → `prod`) and wire Composer/Dataform
   failures into alerting.
 
+A concrete reference model from the Google docs — **split dev → prod by project
++ schema suffix, one Git lineage:**
+
+| Setting | Development | Production |
+|---|---|---|
+| GCP project | `enterprise-dev` | `enterprise-prod` |
+| Git branch | workspace name | `main` |
+| Workspace compilation override | schema suffix `${workspaceName}` | none |
+| Release config | — | `production` |
+| Workflow config (schedule) | — | `production` |
+
+Each developer (or analyst) works in a **personal workspace** that writes to its
+own schema suffix (`analytics_sasha`), so no one clobbers anyone; changes go in
+via **PR to `main`**; the production release config compiles `main` and the
+workflow config schedules it. This is also the answer to the **analyst-pipeline
+governance** question (see
+[`design-philosophy.md` → Two doors to one engine](design-philosophy.md#part-3--two-doors-to-one-engine-engineer-authored-vs-analyst-authored)):
+the governance rule is **one PR-protected repo, analysts get workspaces in it,
+every input is a reviewed `declaration`, and we discourage ad-hoc UI-created
+"shadow" pipeline repos** — those have separate schedules and logs and never get
+promoted. Docs:
+[Manage the Dataform code lifecycle](https://docs.cloud.google.com/dataform/docs/managing-code-lifecycle) ·
+[Configure compilation](https://docs.cloud.google.com/dataform/docs/configure-compilation) ·
+[Schedule runs](https://docs.cloud.google.com/dataform/docs/schedule-runs).
+
 Relates to public-release prep (below): environments need the runtime config
 parameterised rather than hardcoded.
 
@@ -252,5 +277,5 @@ open-sourcing:
 
 ---
 
-Official documentation for all of the above is mapped in
-[`gcp-docs.md`](gcp-docs.md).
+Official Google Cloud documentation for each item is linked inline at that item
+above.

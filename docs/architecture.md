@@ -170,6 +170,46 @@ The Dataform service agent
 repository is configured with the GitHub remote URL, branch `main`, and that
 secret.
 
+### A third path: UI-created pipelines (BigQuery Pipelines / Data Prep)
+
+The two repos above are the **engineer door** (code + Composer). There is a
+**third** way Dataform shows up that teams trip over: **BigQuery Data Pipelines**
+and **Data Preparation** in BigQuery Studio (the *analyst door* — see
+[`design-philosophy.md` → Part 3](design-philosophy.md#part-3--two-doors-to-one-engine-engineer-authored-vs-analyst-authored)).
+Concrete mechanics matter here:
+
+- **It is a *separate* Dataform repository.** Clicking "create pipeline" /
+  "create data preparation" provisions a **new Dataform repo** with its own
+  compilation/release config, **its own workflow configuration (Dataform-native
+  cron) — NOT this demo's Composer DAG**, and its own service account.
+- **Scope is per-pipeline-asset**, not per-user or per-project. Nothing forces it
+  into a shared repo, so it sprawls fast if ungoverned (one repo per pipeline per
+  analyst is possible).
+- **Cross-repo dependency = `declaration` only.** `ref()` resolves *within one
+  repo's* graph. To consume a table from another repo (e.g. our `gold`), the
+  other repo must declare it as a `type: "declaration"` source. That gives a
+  *reference* but **not** orchestration ordering — you must sequence the two
+  schedules manually, and Google
+  [warns against two-way cross-repo dependencies](https://docs.cloud.google.com/dataform/docs/best-practices-repositories).
+- **Single-repo alternative (preferred):** keep everything in one repo and
+  schedule pieces independently with **tags + multiple workflow configurations**
+  (each workflow config selects a tag subset + its own cron). Dependencies stay
+  real `ref()` because it's one compilation graph. See
+  [Schedule runs](https://docs.cloud.google.com/dataform/docs/schedule-runs).
+- **Promotion into this engineering repo:** you don't import the UI pipeline
+  as-is — you take the **SQL it generated** and land it as a **reviewed SQLX /
+  declaration via a PR** into `airport-ops-lakehouse-dataform`. From then on it's
+  a normal node in the Composer-orchestrated graph (true `ref()`, lineage,
+  assertions, one place to debug). The UI was just a drafting tool; the artifact
+  is SQL.
+
+**Rule of thumb:** if an analyst's output feeds production or other teams,
+**promote it** (consolidate into this repo); if it's a self-contained analyst
+mart, it *may* stay a separate repo consuming `gold` via a declaration
+(federate) — but that's a conscious choice, not an accident. The
+Consolidate-vs-Federate tradeoff table is in
+[`design-philosophy.md` → Part 3](design-philosophy.md#consolidate-vs-federate-the-governance-decision).
+
 ## BigQuery connections (reused, not created by this demo)
 
 The demo reuses three existing connections; `bootstrap.sh` grants them IAM but
