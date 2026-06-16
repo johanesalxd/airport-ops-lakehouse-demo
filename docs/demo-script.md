@@ -268,6 +268,18 @@ No views, no copies, all declared in Dataform alongside the transformations."*
   That's exactly why we Consolidate into one repo and discourage shadow pipelines.
   Full detail in `docs/design-philosophy.md` (Part 3) and `docs/architecture.md`
   (Two-repo design → third path).
+- **"Where does Data Canvas fit — isn't it just an AI notebook? And how do Canvas,
+  notebooks and Pipelines chain together?"**
+  Data Canvas is the AI **explore/ask** surface (natural-language, DAG-based) — a
+  *sibling* to notebooks, **not** Dataform-backed, and not for business users. The
+  supported chain is real: **Canvas (explore) → Export as notebook (tidy) → import
+  that notebook into a BigQuery Pipeline + add SQL tasks (sequence) → schedule**
+  (Dataform-native cron). A Pipeline runs both SQL and notebook tasks; importing a
+  notebook makes a **copy** (the source isn't linked, so edits don't auto-sync).
+  That's the **analyst loop**, all inside BigQuery Studio. Our demo is the
+  **engineering loop** — Git `.sqlx` + Composer. Same Dataform engine; the bridge
+  is promotion (a PR). See the "Analyst loop vs engineering loop" slide and
+  `docs/design-philosophy.md` (Part 3).
 
 ## Teardown (after)
 

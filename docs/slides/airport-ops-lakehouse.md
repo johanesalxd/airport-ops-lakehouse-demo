@@ -382,9 +382,9 @@ Same query, same table — **the result depends on who's asking.** All declared 
 
 <!-- _class: lead -->
 
-## Appendix · Two doors to one engine
+## Appendix · Analyst loop vs engineering loop
 
-<span class="small">For the "how do analysts fit in?" question</span>
+<span class="small">Two doors to one engine — for the "how do analysts fit in?" question</span>
 
 ---
 
@@ -412,6 +412,23 @@ Same query, same table — **the result depends on who's asking.** All declared 
 </div>
 
 **Same Dataform engine — different front door.** Decide by **persona + scope**, not by medallion layer.
+
+---
+
+## Analyst loop vs engineering loop
+
+| Stage | **Analyst loop** | **Engineering loop** (this demo) |
+|---|---|---|
+| Explore | **Data Canvas** (NL, Gemini) | ad-hoc SQL / notebooks |
+| Author | Data Prep + notebooks (low-code) | hand-written `.sqlx` in Git |
+| Assemble | **BigQuery Pipeline** (SQL + notebook tasks) | Dataform graph (`ref()`) |
+| Orchestrate | Dataform-native **cron** | **Composer** (Airflow DAG) |
+| Outside BigQuery? | no | yes (Spark, Gemini, governance) |
+| Persona | data analyst | data engineer |
+
+**Analyst chain:** Canvas (explore) → **export as notebook** (tidy) → **import into a Pipeline** + SQL tasks (sequence) → schedule.
+
+<span class="small">Both loops run on the **same Dataform engine**. Canvas is a *sibling to notebooks*, not Dataform-backed; a Pipeline imports a notebook as a **copy**. The bridge to governed production is **promotion = a PR** into the engineering repo.</span>
 
 ---
 

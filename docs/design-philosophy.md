@@ -236,6 +236,55 @@ get workspaces in it, every input is a reviewed `declaration`, and prod is gated
 behind release + workflow configs the engineers own. Use **Federate** only as a
 conscious choice for genuinely independent analyst marts, never by accident.
 
+### The analyst loop vs the engineering loop
+
+Step back from individual tools and there are **two end-to-end loops** for
+getting from a question to a scheduled, governed asset. BigQuery Studio ships a
+whole family of Gemini-assisted tools that together form the **analyst loop**;
+this demo is the **engineering loop**.
+
+The BigQuery Studio AI family, in order of use:
+
+1. **Data Canvas** — *explore / ask.* A natural-language, DAG-based analysis
+   surface (find tables, generate SQL, chart, summarize). It is **not**
+   Dataform-backed and is a *sibling* to notebooks, not a notebook itself. Best
+   for throwaway-friendly exploration. From a SQL node you can **export to** a
+   notebook, a scheduled query, or a Looker Studio report.
+2. **Notebook** — *tidy / package.* The exported Canvas work becomes a Colab
+   Enterprise notebook (Python + SQL) you clean up into a repeatable unit.
+3. **Data Preparation** — *clean / transform.* Gemini-assisted, low-code
+   cleanup (typecast, standardize, enrich, schema-map). Powered by Dataform.
+4. **Data Pipelines** — *sequence / schedule.* Ties **SQL tasks and notebook
+   tasks** together in dependency order on a cron. Powered by Dataform. You can
+   **Add task → Notebook** and *import an existing notebook* — note the import
+   makes a **copy** (the source notebook is unchanged; edits don't auto-sync).
+
+So the full analyst chain is real and supported end to end:
+
+> **Data Canvas (explore)** → **Export as notebook (tidy)** → **import the
+> notebook into a Pipeline + add SQL tasks (sequence)** → **schedule it**
+> (Dataform-native cron). All low-code, all inside BigQuery Studio, no Git, no
+> Composer.
+
+| | **Analyst loop** | **Engineering loop** (this demo) |
+|---|---|---|
+| Explore | Data Canvas (NL, Gemini) | Ad-hoc SQL / notebooks |
+| Author | Data Prep + notebooks (low-code) | Hand-written `.sqlx` in Git |
+| Assemble | BigQuery Pipeline (SQL + notebook tasks) | Dataform compilation graph (`ref()`) |
+| Version control | Optional / behind the UI | **Git, PR-reviewed** |
+| Orchestrate | **Dataform-native cron** (workflow config) | **Cloud Composer** (Airflow DAG) |
+| Engine | **Dataform** (+ notebook runtimes) | **Dataform** (+ Spark, Gemini) |
+| Reaches outside BigQuery? | No (stays in BigQuery Studio) | Yes (Spark ingestion, Gemini, governance) |
+| Persona | Data analyst | Data engineer |
+| Best for | Fast, self-service insight & analyst marts | Governed, cross-service production pipelines |
+
+**Both loops run on the same Dataform engine.** The bridge between them is
+**promotion**: when an analyst-loop asset needs to become governed production,
+you re-land its SQL as a reviewed SQLX/declaration **PR** into the engineering
+repo (the Consolidate path above) — or, deliberately, leave it in its own repo
+consuming `gold` via a `declaration` (Federate). Choose by whether production
+depends on it.
+
 The concrete repo mechanics (separate repo vs single-repo tags + workflow
 configs, cross-repo declarations, and how to *promote* a UI-built pipeline into
 this repo) are in
@@ -243,6 +292,9 @@ this repo) are in
 dev → prod SDLC model is in [`roadmap.md` → CI/CD & environments](roadmap.md).
 
 Reference docs:
+[Data canvas](https://docs.cloud.google.com/bigquery/docs/data-canvas) ·
+[BigQuery pipelines](https://docs.cloud.google.com/bigquery/docs/pipelines-introduction) ·
+[Data preparation](https://docs.cloud.google.com/bigquery/docs/data-prep-introduction) ·
 [Manage the Dataform code lifecycle](https://docs.cloud.google.com/dataform/docs/managing-code-lifecycle) ·
 [Schedule runs (workflow configurations)](https://docs.cloud.google.com/dataform/docs/schedule-runs) ·
 [Declare a data source](https://docs.cloud.google.com/dataform/docs/declare-source).
