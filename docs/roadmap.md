@@ -1,9 +1,15 @@
 # Roadmap
 
-The MVP deliberately stops at a clean, governed batch lakehouse. These are the
-natural next steps, kept out of the critical path so the core demo stays simple.
-Each is grounded in current Google Cloud capabilities; official documentation for
-all of them is mapped in [`gcp-docs.md`](gcp-docs.md).
+The MVP is a clean, governed batch lakehouse — and it already includes a
+fine-grained-access **governance showcase** (RLS/CLS, §1) and optional
+**automated data insights** (§4). The items below are the remaining natural next
+steps, kept out of the critical path so the core demo stays simple. Each is
+grounded in current Google Cloud capabilities; official documentation for all of
+them is mapped in [`gcp-docs.md`](gcp-docs.md).
+
+> **Already implemented (no longer roadmap):** §1 Governance (RLS/CLS & masking)
+> and §4 Automated metadata (data insights). They are kept in this doc, marked
+> *Implemented*, for context.
 
 ## 1. Governance: row-/column-level security & masking
 
@@ -215,11 +221,14 @@ open-sourcing:
   placeholders (`your-project-id`, `YOUR_PROJECT_NUMBER`, …).
 - Scrub connection **service-account emails** from `.env.example`; have
   `bootstrap.sh` auto-discover them instead.
-- Tighten IAM to least privilege: the execution SA currently gets
-  **project-level** `roles/bigquery.connectionAdmin` (needed for
-  `connections.delegate` when creating resources `WITH CONNECTION`). For a shared
-  project, grant `connectionAdmin` **per-connection** (resource-level
-  setIamPolicy on the Spark/Gemini/BigLake connections) instead.
+- Tighten IAM to least privilege: the execution SA currently gets several
+  **project-level** grants that should be scoped down for a shared project:
+  - `roles/bigquery.connectionAdmin` (needed for `connections.delegate` when
+    creating resources `WITH CONNECTION`) → grant **per-connection** (resource-level
+    setIamPolicy on the Spark/Gemini/BigLake connections) instead.
+  - `roles/bigquery.dataOwner` + `roles/bigquerydatapolicy.admin` (added for the
+    RLS/CLS `security` stage) → scope `dataOwner` to the `airport_governance`
+    dataset, and confine data-policy admin to the governance region/policies.
 - **Make `teardown.sh` a complete inverse of `bootstrap.sh`.** Today teardown
   reliably deletes the 8 datasets (and everything inside them), the `raw/` data,
   and the Dataform repository — which is enough to enable a clean rebuild (and
