@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 #
-# Teardown for the Airport Operations Lakehouse demo. Removes datasets, the raw
-# bucket contents, the Dataform repository, and the Dataform service account.
-# Connections (spark-etl-conn, gemini_conn) are left intact since they are shared.
+# Teardown for the Airport Operations Lakehouse demo. Removes the 8 datasets and
+# the raw bucket contents, and deletes the GCP Dataform repository.
+#
+# NOT a full inverse of bootstrap.sh (see docs/roadmap.md "Public-release prep"):
+#   - It does NOT delete the Dataform service account (dataform-airport@…) and
+#     revokes none of the IAM bindings bootstrap grants.
+#   - Shared connections (spark-etl-conn, gemini_conn, default-us-central1) are
+#     left intact by design.
+#   - The GCP Dataform repository is treated as pre-provisioned (reused, not
+#     created by bootstrap.sh). Deleting it here means a later teardown→bootstrap
+#     cycle requires re-provisioning the repository + its Git connection manually
+#     before the next run. Comment out the delete below to keep it.
 #
 # Usage:
 #   source .env && bash scripts/teardown.sh
