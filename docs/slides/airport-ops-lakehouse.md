@@ -79,11 +79,12 @@ style: |
 
 | # | Concept (slides) | Live (console) |
 |---|---|---|
-| 1 | The architecture & the medallion flow | Source files in Cloud Storage |
-| 2 | **Gold ≠ semantic layer** (the big idea) | Trigger the Composer DAG |
+| 1 | Architecture & the medallion flow | Source files + the Composer DAG run |
+| 2 | **Gold ≠ semantic layer** (the big idea) | Semantic view = a `GROUP BY` |
 | 3 | Why Dataform, not "just Python" | The Dataform compiled graph |
-| 4 | Gemini enrichment + governance | Semantic view = a `GROUP BY` |
-| 5 | What's next (roadmap) | Data-quality summary + lineage |
+| 4 | Native `JSON` + Gemini enrichment | Bronze JSON view + enriched feedback |
+| 5 | Governance: assertions + **RLS / CLS** | DQ summary + masked-vs-raw by identity |
+| 6 | What's next (roadmap) | Lineage in Dataplex |
 
 <span class="small">The deck teaches the *why*; the console shows it actually running.</span>
 

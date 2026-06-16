@@ -13,6 +13,23 @@ RLS/CLS stage (`bq-rls-cls-dataform-admin@…`, `bq-rls-cls-dataform-sales@…` 
 `bootstrap.sh` grants them read roles but cannot create groups). See
 [`architecture.md`](architecture.md) for how they are wired.
 
+## Pre-flight checklist (10 min before the session)
+
+- **Two browser profiles / windows signed in to BigQuery:**
+  - **A — admin:** your normal identity, a member of `bq-rls-cls-dataform-admin@…`
+    (sees all rows + raw values in §7c).
+  - **B — sales:** a member of `bq-rls-cls-dataform-sales@…` (sees filtered rows +
+    masked columns in §7c). Needed for the RLS/CLS reveal.
+- **Tabs to pre-open:** Composer Airflow UI (`dev-airflow` → DAG
+  `airport_ops_lakehouse`), BigQuery Studio, the BigQuery **Dataform** repo page,
+  and the slide deck (PDF).
+- **Project context:** console / `bq` set to `johanesa-playground-326616`. Paste
+  the §6–§7c queries into a scratch BigQuery tab ahead of time.
+- **Confirm the latest run is green:** open the most recent
+  `airport_ops_lakehouse` run grid — all 10 tasks green. You will **reuse** this
+  run (not re-trigger) so the built tables are already populated.
+- **Sanity check** one query returns rows (e.g. `sem_airport_operations_daily`).
+
 ## 0. One-time seed (before the session)
 
 ```bash
@@ -66,9 +83,11 @@ is called from Dataform for the non-SQL work."
 ## 5. Run it end-to-end from Airflow (5 min) — live
 
 - Open the Composer **`dev-airflow`** Airflow UI → DAG `airport_ops_lakehouse`.
-- Trigger it. Watch the stages: `compile_repo → setup → ingestion → bronze →
-  silver → gold → semantic → quality → security → publish_run_summary`. The
-  medallion layers are stages — point that out as it runs.
+- **Reuse the latest green run** (recommended for the live session): open its grid
+  and walk the stages `compile_repo → setup → ingestion → bronze → silver → gold →
+  semantic → quality → security → publish_run_summary`. Only **trigger** a fresh
+  run if you specifically want to show it execute (~8 min end-to-end). The
+  medallion layers are stages — point that out.
 - While it runs, open the **Dataform** page in the console → the repository →
   show the **compiled graph** (dependency DAG) and the tags. Also open
   **Workflow Execution Logs** — this is where the per-stage SQL actually executes
@@ -195,6 +214,41 @@ No views, no copies, all declared in Dataform alongside the transformations."*
 - Governance built in: RLS + CLS/masking (the `security` stage), plus Gemini
   auto-metadata. Extensible further: Pub/Sub streaming, continuous queries
   (documented backlog in the README).
+
+## Anticipated Q&A
+
+- **"How does the column masking actually work — Data Catalog policy tags?"**
+  No — the modern **SQL-based `DATA_POLICY`** approach: a `DATA_MASKING_POLICY` and
+  a `RAW_DATA_ACCESS_POLICY` are attached to each column via `ALTER COLUMN … SET
+  OPTIONS`, and `GRANT FINE_GRAINED_READ` to each group's `principalSet` decides
+  who sees raw vs masked. All authored in Dataform SQLX — no policy tags, no
+  Terraform.
+- **"Does the security stage affect / risk the pipeline?"**
+  No. `staff_directory` lives in its own `airport_governance` dataset and **nothing
+  in the medallion graph reads it**, so its RLS/CLS policies can't change pipeline
+  results. (Applying RLS to a *pipeline* table would also filter the Dataform SA's
+  reads — that's a roadmap item with a documented caveat.)
+- **"Why ingest feedback as a view over external JSON if it's an anti-pattern?"**
+  It's a deliberate teaching contrast: it shows BigQuery's native `JSON` type and
+  *why* a non-materialised view over row-oriented external JSON is slow to serve
+  (re-scan + re-parse per query). The baggage Parquet/BigLake path is the "good"
+  columnar counter-example.
+- **"Is any of this real data / PII?"**
+  100% synthetic and public-safe — deterministic seed, no real airport, passenger,
+  or proprietary data, and no logos.
+- **"What does it cost to run?"**
+  Small synthetic volumes, partitioned/clustered tables, and a teardown script.
+  The priced pieces are the Gemini `AI.GENERATE_TEXT` calls and (optional)
+  Gemini-in-BigQuery data insights.
+- **"Why Dataform instead of dbt or plain Python?"**
+  Dataform is native to BigQuery: a declarative SQL graph with `ref()` ordering,
+  built-in assertions, and free lineage/docs — and Spark + Gemini are *called from*
+  the same graph. Python/Spark is still used where the work isn't SQL-shaped
+  (gzip/nested ingestion), just wrapped as Dataform `CALL`s.
+- **"Why is orchestration separate from transformation?"**
+  Composer = **when** (scheduling, retries, alerts); Dataform = **what** (models,
+  order, tests, lineage); Spark = **how** for messy ingestion; BigQuery = **where**
+  compute happens. Clean separation of concerns.
 
 ## Teardown (after)
 
