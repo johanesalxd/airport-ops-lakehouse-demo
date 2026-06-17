@@ -33,13 +33,12 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 uv run --project "${REPO_ROOT}" python "${REPO_ROOT}/scripts/generate_demo_data.py" \
   --out-dir "${OUT_DIR}" --days "${DAYS}" --seed "${SEED}"
 
-# Also remove matching stale objects already in the GCS landing zone from prior
-# uploads (rsync only adds/updates, never deletes). Add more patterns here if a
-# source's format changes again.
-echo ">> Cleaning stale objects in landing zone"
-gcloud storage rm "gs://${RAW_BUCKET}/raw/customer_feedback/**/customer_feedback.json" 2>/dev/null \
-  && echo "   removed stale customer_feedback.json" \
-  || echo "   (no stale customer_feedback.json)"
+# Start from a clean remote landing zone so reruns are deterministic. Without
+# this, older dt= partitions from longer prior runs can remain and be ingested.
+echo ">> Cleaning remote landing zone gs://${RAW_BUCKET}/raw"
+gcloud storage rm -r "gs://${RAW_BUCKET}/raw" 2>/dev/null \
+  && echo "   cleared existing raw objects" \
+  || echo "   (no existing raw objects)"
 
 echo ">> Uploading to gs://${RAW_BUCKET}/raw/"
 gcloud storage rsync -r "${OUT_DIR}" "gs://${RAW_BUCKET}/raw"

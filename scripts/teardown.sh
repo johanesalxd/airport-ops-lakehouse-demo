@@ -8,8 +8,7 @@
 #     revokes none of the IAM bindings bootstrap grants.
 #   - Shared connections (spark-etl-conn, gemini_conn, default-us-central1) are
 #     left intact by design.
-#   - The GCP Dataform repository is treated as pre-provisioned. It is kept by
-#     default; set DELETE_DATAFORM_REPO=true to delete it explicitly.
+#   - The GCP Dataform repository is user-managed and is left intact.
 #
 # Usage:
 #   source .env && bash scripts/teardown.sh
@@ -27,8 +26,6 @@ set -euo pipefail
 : "${DS_GOVERNANCE:?set DS_GOVERNANCE}"
 : "${PROJECT_NUMBER:=}"
 : "${RAW_BUCKET:=}"
-: "${DATAFORM_REPO_ID:=}"
-: "${DELETE_DATAFORM_REPO:=false}"
 : "${PUBSUB_BAGGAGE_SCHEMA:=baggage-scan-event}"
 : "${PUBSUB_BAGGAGE_TOPIC:=baggage-events}"
 : "${PUBSUB_BAGGAGE_DLQ_TOPIC:=baggage-events-dlq}"
@@ -73,13 +70,6 @@ gcloud pubsub schemas delete "${PUBSUB_BAGGAGE_SCHEMA}" --quiet 2>/dev/null \
 # To remove them explicitly, see the BigQuery data policies API / DROP DATA POLICY.
 echo "note: region-scoped staff_*_policy data policies persist (idempotent on rebuild)"
 
-if [[ "${DELETE_DATAFORM_REPO}" == "true" ]]; then
-  : "${DATAFORM_REPO_ID:?set DATAFORM_REPO_ID or leave DELETE_DATAFORM_REPO=false}"
-  gcloud dataform repositories delete "${DATAFORM_REPO_ID}" \
-    --region="${REGION}" --quiet 2>/dev/null \
-    && echo "deleted dataform repo" || echo "skip dataform repo"
-else
-  echo "kept user-managed Dataform repo (set DELETE_DATAFORM_REPO=true to delete)"
-fi
+echo "kept user-managed Dataform repo"
 
 echo "Teardown done. Shared connections and Composer were left intact."
