@@ -77,6 +77,10 @@ set_airflow_variable() {
     --location="${REGION}" variables set -- "${key}" "${value}" >/dev/null
 }
 
+remove_python_caches() {
+  find "$@" -type d -name __pycache__ -prune -exec rm -rf {} +
+}
+
 echo ">> Project: ${PROJECT_ID}  Region: ${REGION}"
 gcloud config set project "${PROJECT_ID}" >/dev/null
 
@@ -337,6 +341,7 @@ for DAG_FILE in "${LAKEHOUSE_DAG_FILE}" "${STREAM_DAG_FILE}"; do
   gcloud storage cp "${DAG_FILE}" "${COMPOSER_DAG_GCS_PREFIX}/"
   echo "   - uploaded ${DAG_FILE} to ${COMPOSER_DAG_GCS_PREFIX}/"
 done
+remove_python_caches "${DAG_LIB_DIR}" "${SHARED_LIB_DIR}"
 gcloud storage cp -r "${DAG_LIB_DIR}" "${COMPOSER_DAG_GCS_PREFIX}/"
 echo "   - uploaded ${DAG_LIB_DIR} to ${COMPOSER_DAG_GCS_PREFIX}/"
 gcloud storage cp -r "${SHARED_LIB_DIR}" "${COMPOSER_DAG_GCS_PREFIX}/"
