@@ -1,17 +1,27 @@
 # Roadmap
 
-The MVP is a clean, governed batch lakehouse — and it already includes optional
-showcases for fine-grained-access **governance** (RLS/CLS, §1), **streaming
-ingestion** (§2), and **automated data insights** (§4). The items below separate
-implemented showcases from remaining natural next steps, kept out of the
-critical path so the core demo stays simple. Each is grounded in current Google
-Cloud capabilities, with the relevant official Google Cloud documentation linked
-inline at each item.
+The MVP is a clean, governed batch lakehouse with public clone-and-configure
+setup. It already includes optional showcases for fine-grained-access
+**governance** (RLS/CLS, §1), **streaming ingestion** (§2), and **automated data
+insights** (§4). Those completed showcases stay in this document for context;
+the remaining sections are natural next steps kept out of the critical path so
+the core demo stays simple.
 
-> **Already implemented (no longer roadmap):** §1 Governance (RLS/CLS &
-> masking), §2 Streaming ingestion (Pub/Sub to BigQuery), and §4 Automated
-> metadata (data insights). They are kept in this doc, marked *Implemented*, for
-> context.
+Each item is grounded in current Google Cloud capabilities, with the relevant
+official Google Cloud documentation linked inline.
+
+## Completed showcases
+
+- **Public release prep:** both repos are public-safe. `.env.example` uses
+  placeholders, `workflow_settings.yaml` uses placeholder defaults, `bootstrap.sh`
+  writes Composer Airflow Variables, and the Composer DAG passes Dataform
+  compilation overrides at runtime. Users must explicitly set `SPARK_CONN_SA`,
+  `GEMINI_CONN_SA`, and `BIGLAKE_CONN_SA` in `.env`.
+- **Governance:** RLS/CLS and masking on a self-contained synthetic staff table.
+- **Streaming ingestion:** manual Composer simulator DAG to Pub/Sub, BigQuery
+  subscription, bronze stream table, and silver dedupe view.
+- **Automated metadata:** optional data-insights script over silver, gold, and
+  semantic objects.
 
 ## 1. Governance: row-/column-level security & masking
 
@@ -236,20 +246,17 @@ promoted. Docs:
 [Configure compilation](https://docs.cloud.google.com/dataform/docs/configure-compilation) ·
 [Schedule runs](https://docs.cloud.google.com/dataform/docs/schedule-runs).
 
-Relates to public-release prep (below): environments need the runtime config
-parameterised rather than hardcoded.
+The public demo already parameterizes runtime config through `.env`, Composer
+Airflow Variables, and Dataform compilation overrides. This item takes that one
+step further into a production-style promotion model.
 
-## 11. Public-release prep
+## 11. Operational hardening
 
-The demo repo is now structured for clone-and-configure usage: `.env.example`
-uses placeholders, `bootstrap.sh` writes Composer Airflow Variables, the Composer
-DAGs pass Dataform compilation overrides, and connection service-account emails
-are auto-discovered when left blank. Remaining public-release work:
+Public release prep is complete. The remaining work here is operational hygiene
+for teams that want to run the demo repeatedly in shared projects or evolve it
+toward production practice:
 
-- Make the companion Dataform repo's tracked `workflow_settings.yaml` placeholder
-  safe while keeping Composer compilation overrides as the runtime source of
-  truth.
-- Tighten IAM to least privilege: the execution SA currently gets several
+- **Tighten IAM to least privilege:** the execution SA currently gets several
   **project-level** grants that should be scoped down for a shared project:
   - `roles/bigquery.connectionAdmin` (needed for `connections.delegate` when
     creating resources `WITH CONNECTION`) → grant **per-connection** (resource-level
