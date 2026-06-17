@@ -244,13 +244,21 @@ documentation.
 ## IAM (granted by `bootstrap.sh`)
 
 - **Dataform execution SA** (`dataform-airport@…`): `bigquery.dataEditor`,
-  `bigquery.jobUser`, `bigquery.connectionUser`, `storage.objectViewer`,
-  `dataproc.editor`.
+  `bigquery.jobUser`, `bigquery.connectionAdmin`, `storage.objectViewer`,
+  `dataproc.editor`, and `bigquerydatapolicy.admin`. Connection admin is used
+  because BigQuery resources created `WITH CONNECTION` need
+  `bigquery.connections.delegate`.
 - **Gemini connection SA**: `aiplatform.user`.
 - **Spark connection SA**: `bigquery.dataEditor`, `bigquery.jobUser`,
   `storage.objectViewer`, `dataproc.worker`.
+- **BigLake connection SA**: `storage.objectViewer` on the raw bucket.
+- **Pub/Sub service agent**: `bigquery.dataEditor`, `bigquery.metadataViewer`,
+  `pubsub.publisher`, and `pubsub.subscriber` for the BigQuery subscription and
+  dead-letter topic.
 - **Composer worker SA**: `dataform.admin` on the project + `serviceAccountUser`
   on the Dataform execution SA (so it can run workflow invocations).
+- **Governance Google Groups**: `bigquery.dataViewer` on the governance dataset
+  so RLS/CLS behavior can be tested with group members.
 
 ## The Composer DAG
 

@@ -169,8 +169,14 @@ airport-ops-lakehouse-demo/
     bootstrap.sh                    # datasets, bucket, SA, IAM, Composer DAG upload
     upload_demo_data.sh             # generate + upload to GCS
     teardown.sh                     # remove demo resources (keeps shared connections)
+  airport_ops_demo/
+    baggage_model.py                # shared batch + streaming baggage model
+  schemas/
+    baggage_scan_event.avsc         # Pub/Sub Avro schema v1
   composer/dags/
     airport_ops_lakehouse_dag.py    # the end-to-end orchestration DAG
+    airport_ops_baggage_stream_dag.py
+    airport_ops_lib/                # DAG helper modules
   docs/
     README.md                       # documentation index — start here
     architecture.md                 # tech stack + infrastructure
@@ -225,7 +231,10 @@ and connect it to your fork or clone of `airport-ops-lakehouse-dataform`:
 2. In the Google Cloud console, create a Dataform repository with ID
    `DATAFORM_REPO_ID`, region `REGION`, and the custom execution service account.
 3. Connect the repository to your remote Git repository using either Developer
-   Connect or a Secret Manager secret that stores a Git token.
+   Connect or a Secret Manager secret that stores a Git token. The
+   `DATAFORM_GIT_URL` and `DATAFORM_GIT_SECRET` values in `.env` are notes for
+   this manual step; `bootstrap.sh` validates the Dataform repository but does
+   not create the Git connection.
 4. Set the default branch to `DATAFORM_GIT_BRANCH` (`main` by default).
 5. Rerun `bootstrap.sh` to validate the repository, grant IAM, set Airflow
    Variables, and upload the DAGs.

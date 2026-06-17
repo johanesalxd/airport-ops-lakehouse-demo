@@ -7,7 +7,15 @@
 #   source .env && bash scripts/upload_demo_data.sh [DAYS] [SEED]
 #
 set -euo pipefail
-: "${RAW_BUCKET:?set RAW_BUCKET (source .env)}"
+: "${RAW_BUCKET:=}"
+
+if [[ -z "${RAW_BUCKET}" ]]; then
+  : "${PROJECT_ID:?set PROJECT_ID (source .env)}"
+  PROJECT_NUMBER="${PROJECT_NUMBER:-$(
+    gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)'
+  )}"
+  RAW_BUCKET="airport-ops-demo-${PROJECT_NUMBER}"
+fi
 
 DAYS="${1:-3}"
 SEED="${2:-42}"

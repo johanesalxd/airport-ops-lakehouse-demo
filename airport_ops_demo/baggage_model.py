@@ -12,8 +12,8 @@ BAG_SCANS = ["check_in", "security", "load", "transfer", "claim"]
 
 
 def format_timestamp(value: dt.datetime) -> str:
-    """Formats a timestamp with second precision."""
-    return value.strftime("%Y-%m-%dT%H:%M:%S")
+    """Formats a UTC timestamp with second precision."""
+    return value.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def make_synthetic_flight_ids(

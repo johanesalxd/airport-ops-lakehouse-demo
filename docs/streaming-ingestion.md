@@ -106,11 +106,12 @@ Optional DAG run config:
 
 For a short smoke test, use:
 
-```json
-{
-  "events_per_second": 5,
-  "duration_seconds": 60
-}
+```bash
+gcloud composer environments run "$COMPOSER_ENV" \
+  --location="$REGION" dags trigger -- \
+  -r "baggage-stream-smoke-$(date +%Y%m%d%H%M%S)" \
+  -c '{"events_per_second":5,"duration_seconds":60}' \
+  airport_ops_baggage_stream_demo
 ```
 
 ## Inspect the stream
