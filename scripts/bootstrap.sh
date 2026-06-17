@@ -6,8 +6,8 @@
 # Dataform execution, Pub/Sub streaming, and Composer orchestration, and uploads
 # the Composer DAGs.
 #
-# Reuses existing connections (spark-etl-conn, gemini_conn). It does NOT create
-# BigQuery connections.
+# Reuses existing BigQuery connections, Composer, and the GCP Dataform repository.
+# It does NOT create those user-managed prerequisites.
 #
 # Usage:
 #   cp .env.example .env && nano .env
@@ -24,13 +24,64 @@ SHARED_LIB_DIR="${REPO_ROOT}/airport_ops_demo"
 BAGGAGE_SCHEMA_FILE="${REPO_ROOT}/schemas/baggage_scan_event.avsc"
 
 : "${PROJECT_ID:?set PROJECT_ID (source .env)}"
-: "${PROJECT_NUMBER:?set PROJECT_NUMBER}"
 : "${REGION:?set REGION}"
-: "${RAW_BUCKET:?set RAW_BUCKET}"
+: "${SPARK_CONNECTION:?set SPARK_CONNECTION}"
+: "${GEMINI_CONNECTION:?set GEMINI_CONNECTION}"
+: "${BIGLAKE_CONNECTION:?set BIGLAKE_CONNECTION}"
+: "${DATAFORM_SA:?set DATAFORM_SA}"
+: "${DATAFORM_REPO_ID:?set DATAFORM_REPO_ID}"
+: "${DATAFORM_GIT_BRANCH:=main}"
+: "${COMPOSER_ENV:?set COMPOSER_ENV}"
+: "${ADMIN_GROUP:?set ADMIN_GROUP}"
+: "${SALES_GROUP:?set SALES_GROUP}"
+: "${DS_BRONZE:?set DS_BRONZE}"
+: "${DS_SILVER:?set DS_SILVER}"
+: "${DS_GOLD:?set DS_GOLD}"
+: "${DS_SEMANTIC:?set DS_SEMANTIC}"
+: "${DS_AI:?set DS_AI}"
+: "${DS_CONTROL:?set DS_CONTROL}"
+: "${DS_ASSERTIONS:?set DS_ASSERTIONS}"
+: "${DS_GOVERNANCE:?set DS_GOVERNANCE}"
+: "${PROJECT_NUMBER:=}"
+: "${RAW_BUCKET:=}"
+: "${SPARK_CONN_SA:=}"
+: "${GEMINI_CONN_SA:=}"
+: "${BIGLAKE_CONN_SA:=}"
 : "${PUBSUB_BAGGAGE_SCHEMA:=baggage-scan-event}"
 : "${PUBSUB_BAGGAGE_TOPIC:=baggage-events}"
 : "${PUBSUB_BAGGAGE_DLQ_TOPIC:=baggage-events-dlq}"
 : "${PUBSUB_BAGGAGE_SUBSCRIPTION:=baggage-events-bq-sub}"
+
+if [[ -z "${PROJECT_NUMBER}" ]]; then
+  PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
+fi
+if [[ -z "${RAW_BUCKET}" ]]; then
+  RAW_BUCKET="airport-ops-demo-${PROJECT_NUMBER}"
+fi
+DATAFORM_SA_EMAIL="${DATAFORM_SA}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+connection_service_account() {
+  local connection_id="$1"
+  bq --format=json show --connection "${PROJECT_ID}.${REGION}.${connection_id}" \
+    | python3 -c 'import json, sys; print(json.load(sys.stdin)["properties"]["serviceAccountId"])'
+}
+
+require_connection() {
+  local connection_id="$1"
+  local connection_type="$2"
+  if ! bq show --connection "${PROJECT_ID}.${REGION}.${connection_id}" >/dev/null 2>&1; then
+    echo "ERROR: Missing BigQuery ${connection_type} connection: ${REGION}.${connection_id}" >&2
+    echo "Create it before running bootstrap.sh. See docs/architecture.md." >&2
+    exit 1
+  fi
+}
+
+set_airflow_variable() {
+  local key="$1"
+  local value="$2"
+  gcloud composer environments run "${COMPOSER_ENV}" \
+    --location="${REGION}" variables set -- "${key}" "${value}" >/dev/null
+}
 
 echo ">> Project: ${PROJECT_ID}  Region: ${REGION}"
 gcloud config set project "${PROJECT_ID}" >/dev/null
@@ -48,6 +99,42 @@ gcloud services enable \
   dataplex.googleapis.com datalineage.googleapis.com \
   cloudaicompanion.googleapis.com \
   pubsub.googleapis.com >/dev/null
+
+echo ">> Creating Dataform service account ${DATAFORM_SA}"
+if gcloud iam service-accounts describe "${DATAFORM_SA_EMAIL}" >/dev/null 2>&1; then
+  echo "   - ${DATAFORM_SA_EMAIL} (exists)"
+else
+  gcloud iam service-accounts create "${DATAFORM_SA}" \
+    --display-name="Airport Demo Dataform execution SA"
+fi
+
+echo ">> Validating user-managed prerequisites"
+if ! gcloud composer environments describe "${COMPOSER_ENV}" \
+    --location="${REGION}" >/dev/null 2>&1; then
+  echo "ERROR: Composer environment not found: ${COMPOSER_ENV} (${REGION})" >&2
+  exit 1
+fi
+if ! gcloud dataform repositories describe "${DATAFORM_REPO_ID}" \
+    --region="${REGION}" >/dev/null 2>&1; then
+  echo "ERROR: Dataform repository not found: ${DATAFORM_REPO_ID} (${REGION})" >&2
+  echo "Create it manually with service account ${DATAFORM_SA_EMAIL}." >&2
+  echo "Then connect it to the companion Git repo and rerun bootstrap.sh." >&2
+  echo "See README.md and docs/architecture.md for the setup steps." >&2
+  exit 1
+fi
+require_connection "${SPARK_CONNECTION}" "SPARK"
+require_connection "${GEMINI_CONNECTION}" "CLOUD_RESOURCE"
+require_connection "${BIGLAKE_CONNECTION}" "CLOUD_RESOURCE"
+
+if [[ -z "${SPARK_CONN_SA}" ]]; then
+  SPARK_CONN_SA="$(connection_service_account "${SPARK_CONNECTION}")"
+fi
+if [[ -z "${GEMINI_CONN_SA}" ]]; then
+  GEMINI_CONN_SA="$(connection_service_account "${GEMINI_CONNECTION}")"
+fi
+if [[ -z "${BIGLAKE_CONN_SA}" ]]; then
+  BIGLAKE_CONN_SA="$(connection_service_account "${BIGLAKE_CONNECTION}")"
+fi
 
 # Keep Managed Service for Apache Spark lineage enabled for Spark stored
 # procedures and batch/session workloads. Runtime-level properties in the
@@ -158,15 +245,6 @@ else
   echo "   - subscription ${PUBSUB_BAGGAGE_SUBSCRIPTION} (created)"
 fi
 
-echo ">> Creating Dataform service account ${DATAFORM_SA}"
-DATAFORM_SA_EMAIL="${DATAFORM_SA}@${PROJECT_ID}.iam.gserviceaccount.com"
-if gcloud iam service-accounts describe "${DATAFORM_SA_EMAIL}" >/dev/null 2>&1; then
-  echo "   - ${DATAFORM_SA_EMAIL} (exists)"
-else
-  gcloud iam service-accounts create "${DATAFORM_SA}" \
-    --display-name="Airport Demo Dataform execution SA"
-fi
-
 echo ">> Granting project roles to Dataform SA"
 # connectionAdmin (not just connectionUser) is required: creating resources
 # WITH CONNECTION (Spark procedures, BigLake table) needs bigquery.connections.delegate.
@@ -215,6 +293,11 @@ for ROLE in roles/bigquery.dataEditor roles/bigquery.jobUser \
     --condition=None >/dev/null
 done
 
+echo ">> Granting GCS read access to the BigLake connection SA"
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${BIGLAKE_CONN_SA}" \
+  --role="roles/storage.objectViewer" --condition=None >/dev/null
+
 echo ">> Granting the Dataform service agent token-creator on the execution SA"
 # The Dataform service agent impersonates the execution SA to run workflows.
 DATAFORM_AGENT="service-${PROJECT_NUMBER}@gcp-sa-dataform.iam.gserviceaccount.com"
@@ -233,6 +316,27 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
 gcloud iam service-accounts add-iam-policy-binding "${DATAFORM_SA_EMAIL}" \
   --member="serviceAccount:${COMPOSER_SA}" \
   --role="roles/iam.serviceAccountUser" >/dev/null
+
+echo ">> Writing Airflow Variables used by the Composer DAGs"
+set_airflow_variable "airport_ops_project_id" "${PROJECT_ID}"
+set_airflow_variable "airport_ops_region" "${REGION}"
+set_airflow_variable "airport_ops_dataform_repository_id" "${DATAFORM_REPO_ID}"
+set_airflow_variable "airport_ops_dataform_git_commitish" "${DATAFORM_GIT_BRANCH}"
+set_airflow_variable "airport_ops_raw_bucket" "${RAW_BUCKET}"
+set_airflow_variable "airport_ops_spark_connection" "${REGION}.${SPARK_CONNECTION}"
+set_airflow_variable "airport_ops_gemini_connection" "${REGION}.${GEMINI_CONNECTION}"
+set_airflow_variable "airport_ops_biglake_connection" "${REGION}.${BIGLAKE_CONNECTION}"
+set_airflow_variable "airport_ops_bronze_dataset" "${DS_BRONZE}"
+set_airflow_variable "airport_ops_silver_dataset" "${DS_SILVER}"
+set_airflow_variable "airport_ops_gold_dataset" "${DS_GOLD}"
+set_airflow_variable "airport_ops_semantic_dataset" "${DS_SEMANTIC}"
+set_airflow_variable "airport_ops_ai_dataset" "${DS_AI}"
+set_airflow_variable "airport_ops_control_dataset" "${DS_CONTROL}"
+set_airflow_variable "airport_ops_assertions_dataset" "${DS_ASSERTIONS}"
+set_airflow_variable "airport_ops_governance_dataset" "${DS_GOVERNANCE}"
+set_airflow_variable "airport_ops_admin_group" "${ADMIN_GROUP}"
+set_airflow_variable "airport_ops_sales_group" "${SALES_GROUP}"
+set_airflow_variable "airport_ops_pubsub_baggage_topic" "${PUBSUB_BAGGAGE_TOPIC}"
 
 echo ">> Uploading Composer DAGs"
 for DAG_FILE in "${LAKEHOUSE_DAG_FILE}" "${STREAM_DAG_FILE}"; do

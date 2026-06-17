@@ -11,10 +11,14 @@ from __future__ import annotations
 from datetime import datetime
 
 from airflow import models
+from airflow.models import Variable
 from airflow.operators.python import PythonOperator, get_current_context
 
-PROJECT_ID = "johanesa-playground-326616"
-PUBSUB_BAGGAGE_TOPIC = "baggage-events"
+PROJECT_ID = Variable.get("airport_ops_project_id")
+PUBSUB_BAGGAGE_TOPIC = Variable.get(
+    "airport_ops_pubsub_baggage_topic",
+    default_var="baggage-events",
+)
 
 DEFAULT_ARGS = {
     "owner": "airport-demo",

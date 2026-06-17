@@ -126,7 +126,7 @@ SELECT
   scan_type,
   scan_ts,
   JSON_VALUE(attributes, '$.schema_demo_version') AS schema_demo_version
-FROM `johanesa-playground-326616.airport_bronze.brz_baggage_events_stream`
+FROM `your-project-id.airport_bronze.brz_baggage_events_stream`
 WHERE publish_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
 ORDER BY publish_time DESC
 LIMIT 50;
@@ -142,7 +142,7 @@ SELECT
   flight_id,
   scan_type,
   scan_ts
-FROM `johanesa-playground-326616.airport_silver.slv_baggage_events_stream_deduped`
+FROM `your-project-id.airport_silver.slv_baggage_events_stream_deduped`
 ORDER BY publish_time DESC
 LIMIT 50;
 ```
@@ -164,7 +164,7 @@ Example v2 field:
 Migration sequence:
 
 ```sql
-ALTER TABLE `johanesa-playground-326616.airport_bronze.brz_baggage_events_stream`
+ALTER TABLE `your-project-id.airport_bronze.brz_baggage_events_stream`
 ADD COLUMN scanner_id STRING;
 ```
 

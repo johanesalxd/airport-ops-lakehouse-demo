@@ -1,7 +1,7 @@
 # Demo script — Airport Operations Lakehouse (15–25 min)
 
-A "concept then live" runbook for the workshop. Project:
-`johanesa-playground-326616`, region `us-central1`.
+A "concept then live" runbook for the workshop. Use the project and region from
+your `.env` file.
 
 ## Assumed one-time platform setup
 
@@ -23,8 +23,8 @@ RLS/CLS stage (`bq-rls-cls-dataform-admin@…`, `bq-rls-cls-dataform-sales@…` 
 - **Tabs to pre-open:** Composer Airflow UI (`dev-airflow` → DAG
   `airport_ops_lakehouse`), BigQuery Studio, the BigQuery **Dataform** repo page,
   and the slide deck (PDF).
-- **Project context:** console / `bq` set to `johanesa-playground-326616`. Paste
-  the §6–§7c queries into a scratch BigQuery tab ahead of time.
+- **Project context:** console / `bq` set to your `PROJECT_ID`. Paste the §6–§7c
+  queries into a scratch BigQuery tab ahead of time.
 - **Confirm the latest run is green:** open the most recent
   `airport_ops_lakehouse` run grid — all 10 tasks green. You will **reuse** this
   run (not re-trigger) so the built tables are already populated.
@@ -34,7 +34,7 @@ RLS/CLS stage (`bq-rls-cls-dataform-admin@…`, `bq-rls-cls-dataform-sales@…` 
 
 ```bash
 cd airport-ops-lakehouse-demo
-cp .env.example .env            # values are already correct for the demo project
+cp .env.example .env            # fill in your project, connections, and groups
 source .env
 bash scripts/bootstrap.sh       # datasets, bucket, SA, IAM, Composer DAG upload
 bash scripts/upload_demo_data.sh 3 42   # generate + upload 3 days of synthetic data
@@ -44,7 +44,7 @@ The Dataform GCP repository and GitHub connection are already deployed;
 `bootstrap.sh` uploads the Composer DAG. Confirm raw data landed:
 
 ```bash
-gcloud storage ls gs://airport-ops-demo-605626490127/raw/
+gcloud storage ls "gs://${RAW_BUCKET}/raw/"
 ```
 
 ## 1. Set the scene (2 min) — concept
@@ -58,7 +58,7 @@ gcloud storage ls gs://airport-ops-demo-605626490127/raw/
 ## 2. Show the source files (1 min) — live
 
 ```bash
-gcloud storage ls -r gs://airport-ops-demo-605626490127/raw/ | head
+gcloud storage ls -r "gs://${RAW_BUCKET}/raw/" | head
 ```
 
 Point out the six formats and the `dt=YYYY-MM-DD` partitioning.
@@ -102,7 +102,7 @@ Bronze metadata:
 
 ```sql
 SELECT _source_format, _batch_id, COUNT(*)
-FROM `johanesa-playground-326616.airport_bronze.brz_flight_schedules`
+FROM `your-project-id.airport_bronze.brz_flight_schedules`
 GROUP BY 1, 2;
 ```
 
@@ -110,12 +110,12 @@ The BigQuery `JSON` type + the external-table anti-pattern (feedback):
 
 ```sql
 -- Landing: a PLAIN EXTERNAL table over NDJSON, each line in ONE native JSON column.
-SELECT payload FROM `johanesa-playground-326616.airport_ops_control.raw_customer_feedback` LIMIT 3;
+SELECT payload FROM `your-project-id.airport_ops_control.raw_customer_feedback` LIMIT 3;
 
 -- Bronze is a VIEW over it: project the JSON column by field access, no PARSE_JSON.
 SELECT feedback_id, JSON_VALUE(payload.source_language) AS lang,
        payload.feedback_text AS text_json, INT64(payload.rating) AS rating
-FROM `johanesa-playground-326616.airport_bronze.brz_customer_feedback` LIMIT 5;
+FROM `your-project-id.airport_bronze.brz_customer_feedback` LIMIT 5;
 ```
 
 Say: *"The native `JSON` type lets us query `payload.feedback_text` directly. But
@@ -129,7 +129,7 @@ Gemini multilingual enrichment (still happens in silver, regardless of ingestion
 ```sql
 SELECT source_language, detected_language, sentiment, urgency, topic,
        english_translation
-FROM `johanesa-playground-326616.airport_silver.slv_customer_feedback_enriched`
+FROM `your-project-id.airport_silver.slv_customer_feedback_enriched`
 LIMIT 15;
 ```
 
@@ -137,9 +137,9 @@ The semantic layer (this is the key moment):
 
 ```sql
 -- A view. Open the definition: it is a GROUP BY over the atomic fct_flight.
-SELECT * FROM `johanesa-playground-326616.airport_semantic.sem_airport_operations_daily`;
-SELECT * FROM `johanesa-playground-326616.airport_semantic.sem_passenger_experience`
-WHERE date_key = (SELECT MAX(date_key) FROM `johanesa-playground-326616.airport_semantic.sem_passenger_experience`);
+SELECT * FROM `your-project-id.airport_semantic.sem_airport_operations_daily`;
+SELECT * FROM `your-project-id.airport_semantic.sem_passenger_experience`
+WHERE date_key = (SELECT MAX(date_key) FROM `your-project-id.airport_semantic.sem_passenger_experience`);
 ```
 
 Say: *"This roll-up is logical, computed on read. In production you replace this
@@ -148,7 +148,7 @@ view with Looker/AtScale/Cube — the atomic gold underneath doesn't change."*
 ## 7. Governance & data quality (3 min) — live
 
 ```sql
-SELECT * FROM `johanesa-playground-326616.airport_gold.gold_data_quality_summary`
+SELECT * FROM `your-project-id.airport_gold.gold_data_quality_summary`
 ORDER BY issue_count DESC;
 ```
 
@@ -185,7 +185,7 @@ First show the policies exist:
 
 ```bash
 bq ls --row_access_policies \
-  johanesa-playground-326616:airport_governance.staff_directory
+  your-project-id:airport_governance.staff_directory
 ```
 
 Then have two people (or impersonate the two groups) run the **same query** and
@@ -196,7 +196,7 @@ compare:
 -- bq-rls-cls-dataform-sales@  -> 2 rows (Sales only), email "" / salary NULL /
 --                                ssn SHA256, and bank_account ERRORS (blocked)
 SELECT staff_id, name, email, department, salary, ssn
-FROM `johanesa-playground-326616.airport_governance.staff_directory`
+FROM `your-project-id.airport_governance.staff_directory`
 ORDER BY staff_id;
 ```
 
@@ -229,7 +229,7 @@ Then query the bronze stream table:
 
 ```sql
 SELECT publish_time, event_id, bag_id, flight_id, scan_type, scan_ts
-FROM `johanesa-playground-326616.airport_bronze.brz_baggage_events_stream`
+FROM `your-project-id.airport_bronze.brz_baggage_events_stream`
 WHERE publish_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
 ORDER BY publish_time DESC
 LIMIT 20;
@@ -239,7 +239,7 @@ Show the silver dedupe view:
 
 ```sql
 SELECT publish_time, event_id, bag_id, flight_id, scan_type, scan_ts
-FROM `johanesa-playground-326616.airport_silver.slv_baggage_events_stream_deduped`
+FROM `your-project-id.airport_silver.slv_baggage_events_stream_deduped`
 ORDER BY publish_time DESC
 LIMIT 20;
 ```

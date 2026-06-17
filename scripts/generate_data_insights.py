@@ -54,8 +54,8 @@ import urllib.error
 import urllib.request
 
 API_ROOT = "https://dataplex.googleapis.com/v1"
-JOB_POLL_BUDGET_S = 1800   # max seconds to wait for a single scan job
-LRO_POLL_BUDGET_S = 120    # max seconds to wait for a create operation
+JOB_POLL_BUDGET_S = 1800  # max seconds to wait for a single scan job
+LRO_POLL_BUDGET_S = 120  # max seconds to wait for a create operation
 POLL_INTERVAL_S = 15
 
 
@@ -69,7 +69,9 @@ def env(name: str, required: bool = True, default: str | None = None) -> str:
 def access_token() -> str:
     return subprocess.run(
         ["gcloud", "auth", "print-access-token"],
-        check=True, capture_output=True, text=True,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout.strip()
 
 
@@ -80,7 +82,9 @@ class Dataplex:
         self.base = f"{API_ROOT}/projects/{project}/locations/{location}"
         self._token = access_token()
 
-    def _request(self, method: str, url: str, body: dict | None = None) -> tuple[int, dict]:
+    def _request(
+        self, method: str, url: str, body: dict | None = None
+    ) -> tuple[int, dict]:
         data = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(url=url, data=data, method=method)
         req.add_header("Authorization", f"Bearer {self._token}")
@@ -114,8 +118,10 @@ class Dataplex:
         if code == 409:
             return True  # already exists -> reuse
         if code != 200:
-            print(f"      ! create {scan_id} failed (HTTP {code}): {self._err(body)}",
-                  file=sys.stderr)
+            print(
+                f"      ! create {scan_id} failed (HTTP {code}): {self._err(body)}",
+                file=sys.stderr,
+            )
             return False
         # create returns a long-running operation; wait until it is done.
         op_name = body.get("name", "")
@@ -126,8 +132,10 @@ class Dataplex:
             code, op = self._request("GET", f"{API_ROOT}/{op_name}")
             if code == 200 and op.get("done"):
                 if "error" in op:
-                    print(f"      ! create {scan_id} op error: {self._err(op)}",
-                          file=sys.stderr)
+                    print(
+                        f"      ! create {scan_id} op error: {self._err(op)}",
+                        file=sys.stderr,
+                    )
                     return False
                 return True
             time.sleep(POLL_INTERVAL_S)
@@ -138,8 +146,10 @@ class Dataplex:
     def run_and_wait(self, scan_id: str, label: str) -> bool:
         code, body = self._request("POST", f"{self.base}/dataScans/{scan_id}:run")
         if code != 200:
-            print(f"      ! run {label} failed (HTTP {code}): {self._err(body)}",
-                  file=sys.stderr)
+            print(
+                f"      ! run {label} failed (HTTP {code}): {self._err(body)}",
+                file=sys.stderr,
+            )
             return False
         job_name = body.get("job", {}).get("name", "")
         if not job_name:
@@ -176,19 +186,24 @@ def bq_set_labels(obj: str, labels: dict[str, str]) -> None:
     args.append(obj)
     res = subprocess.run(args, capture_output=True, text=True)
     if res.returncode != 0:
-        print(f"      ! could not set labels on {obj} (non-fatal): "
-              f"{res.stderr.strip()[:160]}", file=sys.stderr)
+        print(
+            f"      ! could not set labels on {obj} (non-fatal): "
+            f"{res.stderr.strip()[:160]}",
+            file=sys.stderr,
+        )
 
 
 def list_objects(project: str, dataset: str) -> list[tuple[str, str]]:
     """Return [(type, table_id), ...] for a dataset via `bq ls`."""
     res = subprocess.run(
         ["bq", "ls", "--format=json", "--max_results=1000", f"{project}:{dataset}"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if res.returncode != 0:
-        print(f"   ! bq ls {dataset} failed: {res.stderr.strip()[:160]}",
-              file=sys.stderr)
+        print(
+            f"   ! bq ls {dataset} failed: {res.stderr.strip()[:160]}", file=sys.stderr
+        )
         return []
     rows = []
     for o in json.loads(res.stdout or "[]"):
@@ -199,8 +214,10 @@ def list_objects(project: str, dataset: str) -> list[tuple[str, str]]:
 
 
 def table_resource(project: str, dataset: str, table: str) -> str:
-    return (f"//bigquery.googleapis.com/projects/{project}"
-            f"/datasets/{dataset}/tables/{table}")
+    return (
+        f"//bigquery.googleapis.com/projects/{project}"
+        f"/datasets/{dataset}/tables/{table}"
+    )
 
 
 def dataset_resource(project: str, dataset: str) -> str:
@@ -209,10 +226,16 @@ def dataset_resource(project: str, dataset: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Generate BigQuery data insights.")
-    ap.add_argument("--dataset-insights", action="store_true",
-                    help="also generate dataset-level insights (relationship graph, Preview)")
-    ap.add_argument("--scope", default=os.environ.get("INSIGHTS_SCOPE", "ALL"),
-                    choices=["ALL", "TABLE_AND_COLUMN_DESCRIPTIONS", "SQL_QUERIES"])
+    ap.add_argument(
+        "--dataset-insights",
+        action="store_true",
+        help="also generate dataset-level insights (relationship graph, Preview)",
+    )
+    ap.add_argument(
+        "--scope",
+        default=os.environ.get("INSIGHTS_SCOPE", "ALL"),
+        choices=["ALL", "TABLE_AND_COLUMN_DESCRIPTIONS", "SQL_QUERIES"],
+    )
     args = ap.parse_args()
 
     project = env("PROJECT_ID")
@@ -225,8 +248,10 @@ def main() -> int:
     profiled = documented = failed = 0
 
     print(f">> Data insights for {project} ({location})")
-    print(f">> Layers: {' '.join(datasets)}  scope={args.scope}  "
-          f"dataset-insights={args.dataset_insights}")
+    print(
+        f">> Layers: {' '.join(datasets)}  scope={args.scope}  "
+        f"dataset-insights={args.dataset_insights}"
+    )
 
     for ds in datasets:
         print(f">> Dataset: {ds}")
@@ -244,14 +269,23 @@ def main() -> int:
                 print(f"   - table {name}: profile + document")
                 # 1. profile (grounding)
                 pid = f"dp-{slug(name)}"
-                pspec = {"data": {"resource": res}, "type": "DATA_PROFILE",
-                         "dataProfileSpec": {}, **on_demand}
-                if dp.ensure_scan(pid, pspec) and dp.run_and_wait(pid, f"profile {name}"):
-                    bq_set_labels(f"{project}:{ds}.{name}", {
-                        "dataplex-dp-published-scan": pid,
-                        "dataplex-dp-published-project": project,
-                        "dataplex-dp-published-location": location,
-                    })
+                pspec = {
+                    "data": {"resource": res},
+                    "type": "DATA_PROFILE",
+                    "dataProfileSpec": {},
+                    **on_demand,
+                }
+                if dp.ensure_scan(pid, pspec) and dp.run_and_wait(
+                    pid, f"profile {name}"
+                ):
+                    bq_set_labels(
+                        f"{project}:{ds}.{name}",
+                        {
+                            "dataplex-dp-published-scan": pid,
+                            "dataplex-dp-published-project": project,
+                            "dataplex-dp-published-location": location,
+                        },
+                    )
                     profiled += 1
                 else:
                     failed += 1
@@ -260,17 +294,25 @@ def main() -> int:
 
             # 2. document (table or view)
             did = f"doc-{slug(name)}"
-            dspec = {"data": {"resource": res}, "type": "DATA_DOCUMENTATION",
-                     "dataDocumentationSpec": {"generationScopes": args.scope,
-                                               "catalogPublishingEnabled": True},
-                     **on_demand}
+            dspec = {
+                "data": {"resource": res},
+                "type": "DATA_DOCUMENTATION",
+                "dataDocumentationSpec": {
+                    "generationScopes": args.scope,
+                    "catalogPublishingEnabled": True,
+                },
+                **on_demand,
+            }
             if dp.ensure_scan(did, dspec) and dp.run_and_wait(did, f"document {name}"):
                 if is_table:
-                    bq_set_labels(f"{project}:{ds}.{name}", {
-                        "dataplex-data-documentation-published-scan": did,
-                        "dataplex-data-documentation-published-project": project,
-                        "dataplex-data-documentation-published-location": location,
-                    })
+                    bq_set_labels(
+                        f"{project}:{ds}.{name}",
+                        {
+                            "dataplex-data-documentation-published-scan": did,
+                            "dataplex-data-documentation-published-project": project,
+                            "dataplex-data-documentation-published-location": location,
+                        },
+                    )
                 documented += 1
             else:
                 failed += 1
@@ -279,19 +321,25 @@ def main() -> int:
             print(f"   - dataset insights (relationship graph, Preview): {ds}")
             dp.refresh_token()
             dsid = f"doc-ds-{slug(ds)}"
-            dsspec = {"data": {"resource": dataset_resource(project, ds)},
-                      "type": "DATA_DOCUMENTATION",
-                      "dataDocumentationSpec": {"catalogPublishingEnabled": True},
-                      **on_demand}
+            dsspec = {
+                "data": {"resource": dataset_resource(project, ds)},
+                "type": "DATA_DOCUMENTATION",
+                "dataDocumentationSpec": {"catalogPublishingEnabled": True},
+                **on_demand,
+            }
             if dp.ensure_scan(dsid, dsspec) and dp.run_and_wait(dsid, f"dataset {ds}"):
                 documented += 1
             else:
                 failed += 1
 
     print(f">> Done. profiled={profiled} documented={documented} failures={failed}")
-    print("   View results in BigQuery Studio -> select a table/dataset -> Insights tab.")
+    print(
+        "   View results in BigQuery Studio -> select a table/dataset -> Insights tab."
+    )
     if failed:
-        print(f">> Completed with {failed} failure(s) (see log above).", file=sys.stderr)
+        print(
+            f">> Completed with {failed} failure(s) (see log above).", file=sys.stderr
+        )
         return 1
     return 0
 

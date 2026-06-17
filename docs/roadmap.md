@@ -241,18 +241,14 @@ parameterised rather than hardcoded.
 
 ## 11. Public-release prep
 
-Today the runtime config (project id, region, connection names, service-account
-emails) is hardcoded for the demo project, so the live run stays simple. Before
-open-sourcing:
+The demo repo is now structured for clone-and-configure usage: `.env.example`
+uses placeholders, `bootstrap.sh` writes Composer Airflow Variables, the Composer
+DAGs pass Dataform compilation overrides, and connection service-account emails
+are auto-discovered when left blank. Remaining public-release work:
 
-- Parameterise the Composer DAG (`PROJECT_ID`, `REGION`, `REPOSITORY_ID`) via
-  Airflow Variables / environment variables instead of module constants.
-- Parameterise `workflow_settings.yaml` vars (or override them per-run from the
-  DAG's `code_compilation_config.vars`).
-- Replace the concrete values in `.env.example` and the doc examples with
-  placeholders (`your-project-id`, `YOUR_PROJECT_NUMBER`, …).
-- Scrub connection **service-account emails** from `.env.example`; have
-  `bootstrap.sh` auto-discover them instead.
+- Make the companion Dataform repo's tracked `workflow_settings.yaml` placeholder
+  safe while keeping Composer compilation overrides as the runtime source of
+  truth.
 - Tighten IAM to least privilege: the execution SA currently gets several
   **project-level** grants that should be scoped down for a shared project:
   - `roles/bigquery.connectionAdmin` (needed for `connections.delegate` when
@@ -262,13 +258,10 @@ open-sourcing:
     RLS/CLS `security` stage) → scope `dataOwner` to the `airport_governance`
     dataset, and confine data-policy admin to the governance region/policies.
 - **Make `teardown.sh` a complete inverse of `bootstrap.sh`.** Today teardown
-  reliably deletes the 8 datasets (and everything inside them), the `raw/` data,
-  and the Dataform repository — which is enough to enable a clean rebuild (and
-  notably drops `airport_ops_control`, so the legacy managed `raw_customer_feedback`
-  cannot linger and break the external-table DDL on a fresh run). But it does not
-  fully reverse bootstrap:
-    - It does **not delete the Dataform service account** (`dataform-airport@…`),
-      even though the script header claims it does — fix the code or the comment.
+  deletes the 8 datasets (and everything inside them), the `raw/` data, and
+  Pub/Sub streaming resources. It keeps user-managed resources by default. It
+  does not fully reverse bootstrap:
+    - It does **not delete the Dataform service account** (`dataform-airport@…`).
     - It revokes **none of the ~13 IAM bindings** bootstrap adds (execution SA
       project roles, Gemini/Spark connection-SA roles, the Dataform service-agent
       token-creator grant, and the Composer SA's `dataform.admin` +
@@ -279,8 +272,7 @@ open-sourcing:
       stays registered in Airflow.
     - Every destructive step is `… 2>/dev/null && echo ok || echo skip`, which
       **swallows failures** (teardown reports success even if nothing was deleted).
-      Surface errors, and add `--force` to `dataform repositories delete` so it
-      still succeeds when the repo has workspaces/release configs.
+      Surface errors for resources that should be deleted.
 
 ---
 

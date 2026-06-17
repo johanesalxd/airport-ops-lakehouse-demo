@@ -34,7 +34,7 @@ gcloud storage rm "gs://${RAW_BUCKET}/raw/customer_feedback/**/customer_feedback
   || echo "   (no stale customer_feedback.json)"
 
 echo ">> Uploading to gs://${RAW_BUCKET}/raw/"
-gcloud storage rsync -r "${OUT_DIR}" "gs://${RAW_BUCKET}/raw" 
+gcloud storage rsync -r "${OUT_DIR}" "gs://${RAW_BUCKET}/raw"
 
 echo ">> Upload complete. Layout:"
 gcloud storage ls -r "gs://${RAW_BUCKET}/raw" | head -20

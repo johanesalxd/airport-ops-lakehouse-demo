@@ -170,6 +170,21 @@ The Dataform service agent
 repository is configured with the GitHub remote URL, branch `main`, and that
 secret.
 
+Public setup keeps this repository creation manual because Git provider choices
+vary by user and organization. Google Cloud's Dataform flow is:
+
+- Create a Dataform repository in the selected region with a custom execution
+  service account.
+- Connect the repository to Git through Developer Connect or through a Secret
+  Manager secret containing a Git token.
+- Grant the Dataform service agent access to the Git secret when using the
+  Secret Manager path.
+
+`bootstrap.sh` validates that the GCP Dataform repository exists, grants the
+runtime IAM needed by the execution service account, writes Composer Airflow
+Variables from `.env`, and uploads the DAGs. It does not create or connect the
+GCP Dataform repository.
+
 ### A third path: UI-created pipelines (BigQuery Pipelines / Data Prep)
 
 The two repos above are the **engineer door** (code + Composer). There is a
@@ -222,6 +237,10 @@ identity.
 | `gemini_conn` | CLOUD_RESOURCE | Gemini remote model | `roles/aiplatform.user` |
 | `default-us-central1` | CLOUD_RESOURCE | BigLake external table | GCS read on the raw bucket |
 
+If the connection service-account values are blank in `.env`, `bootstrap.sh`
+discovers them with `bq show --connection`, matching the BigQuery connection
+documentation.
+
 ## IAM (granted by `bootstrap.sh`)
 
 - **Dataform execution SA** (`dataform-airport@…`): `bigquery.dataEditor`,
@@ -240,7 +259,10 @@ operators:
 
 - `DataformCreateCompilationResultOperator` — compiles the connected Git repo
   **once**, at `git_commitish = main`, stamping every bronze row with the Airflow
-  run id via a compilation var (`batchId = {{ run_id }}`).
+  run id via a compilation var (`batchId = {{ run_id }}`). Runtime project,
+  location, dataset, bucket, connection, and governance values are passed as
+  Dataform `codeCompilationConfig` overrides from Airflow Variables written by
+  `bootstrap.sh`.
 - `DataformCreateWorkflowInvocationOperator` — one invocation **per stage**,
   filtered by tag, with `transitive_dependencies_included = False` and
   `asynchronous=False`, so each task waits for its Dataform invocation to

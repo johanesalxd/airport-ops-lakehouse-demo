@@ -1,4 +1,13 @@
 out/
 .env
+.env.*
+!.env.example
 __pycache__/
 .venv/
+.ruff_cache/
+.pytest_cache/
+.DS_Store
+.df-credentials.json
+credentials.json
+*.key
+*.pem

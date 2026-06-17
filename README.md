@@ -151,7 +151,7 @@ medallion layer (or a setup step), so the task list *is* the architecture.
 | Repo | Role |
 |---|---|
 | **`airport-ops-lakehouse-demo`** (this repo) | Everything *around* the transformation: data generator, provisioning scripts, the Composer DAG, docs. |
-| **[`airport-ops-lakehouse-dataform`](https://github.com/johanesalxd/airport-ops-lakehouse-dataform)** | The Dataform project (the transformation graph). |
+| **`airport-ops-lakehouse-dataform`** | The Dataform project (the transformation graph). Clone or fork it beside this repo. |
 
 Two repos because a **GCP Dataform repository expects the Dataform project at the
 Git repo root**, and that repository is what Composer invokes. See
@@ -180,14 +180,13 @@ airport-ops-lakehouse-demo/
     operations.md                   # runbook: logs, caveats, known issues
     roadmap.md                      # implemented showcases and next steps
     slides/                         # Marp workshop deck (+ README for building it)
-  sample_data/                      # one day of generated output, for reference
 ```
 
 ---
 
 ## Prerequisites
 
-- A GCP project with BigQuery, Dataform, Dataproc, Data Lineage, Vertex AI,
+- A Google Cloud project with BigQuery, Dataform, Dataproc, Data Lineage, Vertex AI,
   Composer, Secret Manager, and Cloud Storage APIs enabled (`bootstrap.sh`
   enables them).
 - `gcloud` (with the `bq` CLI) authenticated (`gcloud auth application-default
@@ -200,9 +199,8 @@ airport-ops-lakehouse-demo/
 - **Assumed already provisioned** (the demo *reuses* these rather than creating
   them): three BigQuery connections — a **Spark** connection, a **CLOUD_RESOURCE**
   connection for Gemini, and one for BigLake — plus a **Cloud Composer**
-  environment, the **GCP Dataform repository** linked to the companion Git repo,
-  and the **Secret Manager** secret holding the Git token. How these are wired is
-  documented in [`docs/architecture.md`](docs/architecture.md).
+  environment and the **GCP Dataform repository** linked to the companion Git repo.
+  How these are wired is documented in [`docs/architecture.md`](docs/architecture.md).
 - **[uv](https://docs.astral.sh/uv/)** — manages the Python version + deps
   (`pyarrow`); the scripts run under `uv run` (see `pyproject.toml`). Run
   `uv sync` once. Node + the Dataform CLI are optional (only for local Dataform
@@ -217,11 +215,35 @@ airport-ops-lakehouse-demo/
 
 ---
 
+## Manual Dataform repository setup
+
+Before the full `bootstrap.sh` run, create the GCP Dataform repository manually
+and connect it to your fork or clone of `airport-ops-lakehouse-dataform`:
+
+1. Run `bootstrap.sh` once if you want it to create the `DATAFORM_SA` service
+   account. It will stop if the Dataform repository is not ready yet.
+2. In the Google Cloud console, create a Dataform repository with ID
+   `DATAFORM_REPO_ID`, region `REGION`, and the custom execution service account.
+3. Connect the repository to your remote Git repository using either Developer
+   Connect or a Secret Manager secret that stores a Git token.
+4. Set the default branch to `DATAFORM_GIT_BRANCH` (`main` by default).
+5. Rerun `bootstrap.sh` to validate the repository, grant IAM, set Airflow
+   Variables, and upload the DAGs.
+
+Google Cloud references:
+
+- [Create a Dataform repository](https://docs.cloud.google.com/dataform/docs/create-repository)
+- [Connect a Dataform repository to Git](https://docs.cloud.google.com/dataform/docs/connect-repository)
+- [Schedule Dataform runs with Managed Airflow](https://docs.cloud.google.com/dataform/docs/schedule-runs)
+
+---
+
 ## How to run
 
 ```bash
-# 1. Configure (defaults already target the demo project)
+# 1. Configure your project, Composer environment, connections, and groups
 cp .env.example .env
+$EDITOR .env
 source .env
 
 # 1b. Install Python deps into a pinned uv environment (one-time)
@@ -247,8 +269,6 @@ Then explore results in BigQuery (the semantic views in `airport_semantic`, the
 Gemini enrichment in `airport_silver.slv_customer_feedback_enriched`, and
 `airport_gold.gold_data_quality_summary`). The
 [`docs/demo-script.md`](docs/demo-script.md) is a minute-by-minute runbook.
-
----
 
 ## What's covered vs. not
 
@@ -326,4 +346,6 @@ source .env && bash scripts/teardown.sh
 ## Safety
 
 Synthetic data only. No real PII, secrets, credentials, or proprietary data are
-committed; `.env` is git-ignored (`.env.example` carries non-secret config).
+committed. Sample data is regenerated locally with `scripts/generate_demo_data.py`
+and uploaded by `scripts/upload_demo_data.sh`; it is not committed. `.env` is
+git-ignored (`.env.example` carries placeholders and non-secret defaults).

@@ -21,6 +21,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from airflow import models
+from airflow.models import Variable
 from airflow.providers.google.cloud.operators.bigquery import (
     BigQueryInsertJobOperator,
 )
@@ -31,11 +32,30 @@ from airflow.providers.google.cloud.operators.dataform import (
 
 # --- Configuration ----------------------------------------------------------
 
-PROJECT_ID = "johanesa-playground-326616"
-REGION = "us-central1"
-REPOSITORY_ID = "airport-ops-lakehouse-dataform"
-GIT_COMMITISH = "main"
-SEMANTIC_DATASET = "airport_semantic"
+PROJECT_ID = Variable.get("airport_ops_project_id")
+REGION = Variable.get("airport_ops_region", default_var="us-central1")
+REPOSITORY_ID = Variable.get(
+    "airport_ops_dataform_repository_id",
+    default_var="airport-ops-lakehouse-dataform",
+)
+GIT_COMMITISH = Variable.get("airport_ops_dataform_git_commitish", default_var="main")
+
+RAW_BUCKET = Variable.get("airport_ops_raw_bucket")
+SPARK_CONNECTION = Variable.get("airport_ops_spark_connection")
+GEMINI_CONNECTION = Variable.get("airport_ops_gemini_connection")
+BIGLAKE_CONNECTION = Variable.get("airport_ops_biglake_connection")
+
+BRONZE_DATASET = Variable.get("airport_ops_bronze_dataset")
+SILVER_DATASET = Variable.get("airport_ops_silver_dataset")
+GOLD_DATASET = Variable.get("airport_ops_gold_dataset")
+SEMANTIC_DATASET = Variable.get("airport_ops_semantic_dataset")
+AI_DATASET = Variable.get("airport_ops_ai_dataset")
+CONTROL_DATASET = Variable.get("airport_ops_control_dataset")
+ASSERTIONS_DATASET = Variable.get("airport_ops_assertions_dataset")
+GOVERNANCE_DATASET = Variable.get("airport_ops_governance_dataset")
+
+ADMIN_GROUP = Variable.get("airport_ops_admin_group")
+SALES_GROUP = Variable.get("airport_ops_sales_group")
 
 # Pipeline stages run in this order; each maps to a Dataform tag. Each stage runs
 # only the actions carrying its tag (transitive dependencies disabled), so the
@@ -69,6 +89,36 @@ def _invocation_config(tag: str) -> dict:
     }
 
 
+def _compilation_config() -> dict:
+    """Builds the Dataform compilation overrides from Airflow Variables."""
+    return {
+        "default_database": PROJECT_ID,
+        "default_location": REGION,
+        "assertion_schema": ASSERTIONS_DATASET,
+        "vars": {
+            # Stamp every bronze row with the Airflow run for traceability. Use
+            # run_id because a schedule=None DAG has no reliable data interval.
+            "batchId": "{{ run_id }}",
+            "rawBucket": RAW_BUCKET,
+            "sparkConnection": SPARK_CONNECTION,
+            "geminiConnection": GEMINI_CONNECTION,
+            "biglakeConnection": BIGLAKE_CONNECTION,
+            "bronzeDataset": BRONZE_DATASET,
+            "silverDataset": SILVER_DATASET,
+            "goldDataset": GOLD_DATASET,
+            "semanticDataset": SEMANTIC_DATASET,
+            "aiDataset": AI_DATASET,
+            "controlDataset": CONTROL_DATASET,
+            "governanceDataset": GOVERNANCE_DATASET,
+            "adminGroup": f"group:{ADMIN_GROUP}",
+            "salesGroup": f"group:{SALES_GROUP}",
+            "adminPrincipal": f"principalSet://goog/group/{ADMIN_GROUP}",
+            "salesPrincipal": f"principalSet://goog/group/{SALES_GROUP}",
+            "geminiEndpoint": "gemini-2.5-flash",
+        },
+    }
+
+
 with models.DAG(
     dag_id="airport_ops_lakehouse",
     description="End-to-end airport ops lakehouse: Composer -> Dataform -> Spark/Gemini -> star schema + semantic views.",
@@ -78,7 +128,6 @@ with models.DAG(
     default_args=default_args,
     tags=["airport", "lakehouse", "dataform", "demo"],
 ) as dag:
-
     compile_repo = DataformCreateCompilationResultOperator(
         task_id="compile_repo",
         project_id=PROJECT_ID,
@@ -86,13 +135,7 @@ with models.DAG(
         repository_id=REPOSITORY_ID,
         compilation_result={
             "git_commitish": GIT_COMMITISH,
-            "code_compilation_config": {
-                # Stamp every bronze row with the Airflow run for traceability.
-                # Use run_id (always defined): a schedule=None DAG triggered
-                # manually on Airflow 3 has no data interval, so date macros like
-                # ds_nodash are undefined.
-                "vars": {"batchId": "{{ run_id }}"},
-            },
+            "code_compilation_config": _compilation_config(),
         },
     )
 
