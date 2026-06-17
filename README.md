@@ -187,8 +187,9 @@ airport-ops-lakehouse-demo/
 
 ## Prerequisites
 
-- A GCP project with BigQuery, Dataform, Dataproc, Vertex AI, Composer, Secret
-  Manager, and Cloud Storage APIs enabled (`bootstrap.sh` enables them).
+- A GCP project with BigQuery, Dataform, Dataproc, Data Lineage, Vertex AI,
+  Composer, Secret Manager, and Cloud Storage APIs enabled (`bootstrap.sh`
+  enables them).
 - `gcloud` (with the `bq` CLI) authenticated (`gcloud auth application-default
   login`) with rights to create datasets, buckets, service accounts, and IAM
   bindings.

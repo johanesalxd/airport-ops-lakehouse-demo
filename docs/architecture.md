@@ -304,7 +304,11 @@ BigQuery DDL:
 ```sql
 CREATE OR REPLACE PROCEDURE `…airport_ops_control.sp_load_passenger_flow`(...)
 WITH CONNECTION `us-central1.spark-etl-conn`
-OPTIONS(engine="SPARK", runtime_version="2.2")
+OPTIONS(
+  engine="SPARK",
+  runtime_version="2.2",
+  properties=[("spark.dataproc.lineage.enabled", "true")]
+)
 LANGUAGE PYTHON AS R"""
 # PySpark: read from GCS, normalise, add ingestion metadata, write to BigQuery
 """

@@ -37,13 +37,16 @@ gcloud config set project "${PROJECT_ID}" >/dev/null
 
 echo ">> Enabling required APIs (no-op if already enabled)"
 # dataplex + cloudaicompanion (Gemini for Google Cloud) power the optional
-# data-insights script (scripts/generate_data_insights.sh).
+# data-insights script (scripts/generate_data_insights.sh). datalineage is
+# required for Managed Service for Apache Spark lineage emitted by the Spark
+# stored procedures.
 gcloud services enable \
   bigquery.googleapis.com bigqueryconnection.googleapis.com \
   dataform.googleapis.com dataproc.googleapis.com \
   aiplatform.googleapis.com composer.googleapis.com \
   secretmanager.googleapis.com storage.googleapis.com \
-  dataplex.googleapis.com cloudaicompanion.googleapis.com \
+  dataplex.googleapis.com datalineage.googleapis.com \
+  cloudaicompanion.googleapis.com \
   pubsub.googleapis.com >/dev/null
 
 echo ">> Creating BigQuery datasets in ${REGION}"
