@@ -178,7 +178,7 @@ airport-ops-lakehouse-demo/
     why-dataform-not-python.md
     demo-script.md                  # the workshop runbook
     operations.md                   # runbook: logs, caveats, known issues
-    roadmap.md                      # what's next (governance, streaming, insights)
+    roadmap.md                      # implemented showcases and next steps
     slides/                         # Marp workshop deck (+ README for building it)
   sample_data/                      # one day of generated output, for reference
 ```
@@ -263,6 +263,7 @@ Gemini enrichment in `airport_silver.slv_customer_feedback_enriched`, and
 | Semantic layer | 3 BigQuery roll-up views |
 | Data quality | built-in + manual assertions, quarantine, quality summary |
 | Orchestration | Composer DAG driving Dataform by stage/tag |
+| Streaming ingestion showcase | manual Composer DAG → Pub/Sub schema/topic → BigQuery subscription → bronze stream table + silver dedupe view |
 | Lineage | BigQuery / Dataplex lineage from raw → gold |
 | Cost control | small synthetic volumes, partition/cluster, teardown script |
 
@@ -271,8 +272,7 @@ masking (the `security` stage — a self-contained `staff_directory` table with 
 and SQL `DATA_POLICY` masking).
 
 **Not covered (intentionally — see the roadmap):** managed data quality
-(Dataplex auto DQ), Pub/Sub streaming ingestion,
-BigQuery continuous queries, conversational analytics / data agents, vector
+(Dataplex auto DQ), BigQuery continuous queries, conversational analytics / data agents, vector
 search & embeddings, an Iceberg open-table-format variant, a BI dashboard, data
 sharing (Analytics Hub), and Dataform CI/CD environments. These are documented as
 next steps in [`docs/roadmap.md`](docs/roadmap.md). **Automated BigQuery data
@@ -301,6 +301,7 @@ question it answers. In brief:
 | [`docs/why-dataform-not-python.md`](docs/why-dataform-not-python.md) | What Dataform is and when to reach for Spark/Python instead |
 | [`docs/demo-script.md`](docs/demo-script.md) | The workshop runbook (checklist, live flow, Q&A) |
 | [`docs/operations.md`](docs/operations.md) | Runbook: **where logs live**, Composer 3 caveats, idempotency, known issues |
+| [`docs/streaming-ingestion.md`](docs/streaming-ingestion.md) | Optional Pub/Sub baggage stream, schema versioning, replay/backfill |
 | [`docs/roadmap.md`](docs/roadmap.md) | Governance, streaming, continuous queries, data insights, CI/CD environments |
 | [`docs/slides/README.md`](docs/slides/README.md) | The Marp workshop deck and how to build/update it |
 

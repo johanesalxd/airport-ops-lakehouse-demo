@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "BaggageScanEvent",
+  "namespace": "airport.ops",
+  "fields": [
+    {"name": "event_id", "type": "string"},
+    {"name": "bag_id", "type": "string"},
+    {"name": "flight_id", "type": "string"},
+    {"name": "scan_type", "type": "string"},
+    {"name": "scan_ts", "type": "string"},
+    {"name": "terminal_id", "type": "string"},
+    {"name": "belt_id", "type": "string"},
+    {"name": "status", "type": "string"},
+    {"name": "simulator_run_id", "type": "string"}
+  ]
+}

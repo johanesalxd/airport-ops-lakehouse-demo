@@ -345,6 +345,7 @@ Same query, same table — **the result depends on who's asking.** All declared 
 - Semantic roll-up views
 - Assertions + quarantine + DQ summary
 - RLS + CLS / masking (governance stage)
+- Optional Pub/Sub baggage stream
 - Composer orchestration + lineage
 
 </div>
@@ -352,7 +353,7 @@ Same query, same table — **the result depends on who's asking.** All declared 
 
 **Roadmap**
 - Managed DQ (Dataplex AutoDQ)
-- Pub/Sub streaming + continuous queries
+- Continuous queries for real-time analytics
 - Conversational analytics / data agents
 - Vector search & embeddings
 - Iceberg open table format
@@ -362,7 +363,7 @@ Same query, same table — **the result depends on who's asking.** All declared 
 </div>
 </div>
 
-<span class="small">Vs. Google Cloud's lakehouse reference pattern, the BI layer, streaming, and conversational analytics remain on the roadmap; governance (RLS/CLS) is now covered.</span>
+<span class="small">Vs. Google Cloud's lakehouse reference pattern, the optional Pub/Sub stream and governance (RLS/CLS) are now covered; the BI layer, continuous queries, and conversational analytics remain on the roadmap.</span>
 
 ---
 

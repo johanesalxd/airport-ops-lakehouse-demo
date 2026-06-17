@@ -28,16 +28,22 @@ import gzip
 import json
 import os
 import random
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from airport_ops_demo.baggage_model import (
+    AIRLINES,
+    TERMINALS,
+    generate_baggage_events as generate_baggage_scan_events,
+)
 
 # --- Reference dimensions (synthetic) ---------------------------------------
 
-TERMINALS = ["T1", "T2", "T3", "T4"]
 ZONES = ["check_in", "departure_hall", "transit", "arrival_hall", "retail"]
-AIRLINES = ["AA", "BB", "CC", "DD", "EE"]  # fictional 2-letter codes
 DESTINATIONS = ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG"]
 AIRCRAFT = ["A320", "A350", "B777", "B787", "A380"]
 DELAY_REASONS = ["weather", "technical", "crew", "atc", "late_inbound", None]
-BAG_SCANS = ["check_in", "security", "load", "transfer", "claim"]
 
 # Multilingual feedback templates: (language_code, text, expected_sentiment)
 FEEDBACK_SAMPLES = [
@@ -140,49 +146,8 @@ def gen_flight_events(rng: random.Random, d: dt.date, schedules):
 
 def gen_baggage_events(rng: random.Random, d: dt.date, schedules):
     """Baggage scan journey. Plants a missing-flight-reference + late scan."""
-    rows = []
     flight_ids = [s["flight_id"] for s in schedules]
-    bag_seq = 0
-    for fid in flight_ids:
-        for _ in range(rng.randint(1, 4)):
-            bag_seq += 1
-            bag_id = f"bag-{d.isoformat()}-{bag_seq}"
-            # Realistic baggage journey: scans are MINUTES apart (not hours), so the
-            # full check_in -> claim span straddles the 45-min SLA. This yields a
-            # believable mix of late/on-time bags (~1/3 late) instead of every bag
-            # breaching. 4 gaps of ~3-18 min => total journey ~12-72 min.
-            scan_dt = dt.datetime(
-                d.year, d.month, d.day, rng.randint(4, 21), rng.randint(0, 30)
-            )
-            for j, scan in enumerate(BAG_SCANS):
-                if j > 0:
-                    scan_dt += dt.timedelta(minutes=rng.randint(3, 18))
-                if rng.random() < 0.1 and scan in ("load", "transfer"):
-                    continue  # missing scan -> SLA gap
-                rows.append(
-                    {
-                        "bag_id": bag_id,
-                        "flight_id": fid,
-                        "scan_type": scan,
-                        "scan_ts": scan_dt.strftime("%Y-%m-%dT%H:%M:%S"),
-                        "terminal_id": rng.choice(TERMINALS),
-                        "belt_id": f"belt-{rng.randint(1, 12)}",
-                        "status": "ok",
-                    }
-                )
-    # Anomaly: baggage event referencing a non-existent flight
-    rows.append(
-        {
-            "bag_id": f"bag-{d.isoformat()}-orphan",
-            "flight_id": "ZZ000-nonexistent",
-            "scan_type": "load",
-            "scan_ts": ts(d, 23, 59),
-            "terminal_id": "T1",
-            "belt_id": "belt-1",
-            "status": "ok",
-        }
-    )
-    return rows
+    return generate_baggage_scan_events(rng, d, flight_ids)
 
 
 def gen_passenger_flow(rng: random.Random, d: dt.date):

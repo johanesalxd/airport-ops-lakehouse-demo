@@ -270,6 +270,31 @@ The DAG orchestrates Dataform only. Raw data is seeded beforehand by
 `scripts/upload_demo_data.sh`; in production this would be a managed ingestion
 task.
 
+## Optional streaming baggage demo
+
+`composer/dags/airport_ops_baggage_stream_dag.py` is a separate manual DAG. It
+publishes a bounded, low-rate stream of baggage scan events to the schema-backed
+Pub/Sub topic `baggage-events`. The topic feeds a Pub/Sub BigQuery subscription,
+which writes directly to `airport_bronze.brz_baggage_events_stream` through the
+Storage Write API.
+
+The bronze streaming table is created by `bootstrap.sh`, not Dataform, because
+Pub/Sub owns the continuous append path. Dataform declares the table and builds
+`airport_silver.slv_baggage_events_stream_deduped`, a view that keeps one row per
+`event_id` to handle Pub/Sub's at-least-once delivery.
+
+The stream uses the same shared baggage journey model as the daily Parquet source
+(`airport_ops_demo.baggage_model`): the same scan sequence, minute-scale scan
+gaps, missing load/transfer scans, terminal and belt conventions, and synthetic
+flight ID shape. The publisher only adds Pub/Sub-specific metadata and occasional
+duplicate `event_id` values for the dedupe demonstration.
+
+The table is hourly partitioned by `publish_time`, clustered by `bag_id`,
+`flight_id`, and `terminal_id`, and expires partitions after 3 days. It does not
+require a partition filter so workshop queries remain simple. See
+[`streaming-ingestion.md`](streaming-ingestion.md) for the runbook and schema
+evolution/backfill guidance.
+
 ## Spark stored procedures
 
 Defined inline in the Dataform operation

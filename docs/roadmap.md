@@ -1,15 +1,17 @@
 # Roadmap
 
-The MVP is a clean, governed batch lakehouse — and it already includes a
-fine-grained-access **governance showcase** (RLS/CLS, §1) and optional
-**automated data insights** (§4). The items below are the remaining natural next
-steps, kept out of the critical path so the core demo stays simple. Each is
-grounded in current Google Cloud capabilities, with the relevant official Google
-Cloud documentation linked inline at each item.
+The MVP is a clean, governed batch lakehouse — and it already includes optional
+showcases for fine-grained-access **governance** (RLS/CLS, §1), **streaming
+ingestion** (§2), and **automated data insights** (§4). The items below separate
+implemented showcases from remaining natural next steps, kept out of the
+critical path so the core demo stays simple. Each is grounded in current Google
+Cloud capabilities, with the relevant official Google Cloud documentation linked
+inline at each item.
 
-> **Already implemented (no longer roadmap):** §1 Governance (RLS/CLS & masking)
-> and §4 Automated metadata (data insights). They are kept in this doc, marked
-> *Implemented*, for context.
+> **Already implemented (no longer roadmap):** §1 Governance (RLS/CLS &
+> masking), §2 Streaming ingestion (Pub/Sub to BigQuery), and §4 Automated
+> metadata (data insights). They are kept in this doc, marked *Implemented*, for
+> context.
 
 ## 1. Governance: row-/column-level security & masking
 
@@ -64,34 +66,39 @@ in-graph assertions.
 
 ## 2. Streaming ingestion: baggage events via Pub/Sub
 
-Turn baggage scans from daily Parquet files into live events:
+**Implemented as an optional showcase** for the ingestion path. Baggage scans can
+now be published as low-rate live events:
 
 ```
-baggage scanner simulator
+manual Composer simulator DAG
   → Pub/Sub topic: baggage-events
   → Pub/Sub BigQuery subscription
-  → airport_streaming.baggage_events_stream
-  → Dataform silver model / continuous query
-  → near-real-time baggage SLA + disruption tables
+  → airport_bronze.brz_baggage_events_stream
+  → Dataform silver view: slv_baggage_events_stream_deduped
 ```
 
-Start with a **Pub/Sub BigQuery subscription** (writes directly to BigQuery via
-the Storage Write API, no subscriber client). Notes:
+The showcase uses a **Pub/Sub BigQuery subscription** (writes directly to
+BigQuery via the Storage Write API, no subscriber client). Notes:
 
 - BigQuery subscriptions are **at-least-once** — dedupe downstream by event/scan
   id.
 - Configure a dead-letter topic for schema/write failures.
+- Pub/Sub schema revisions validate producer messages; BigQuery table evolution
+  remains a separate, deliberate storage contract.
 - For exactly-once or heavy windowed transforms, add a Dataflow Pub/Sub→BigQuery
   pipeline later.
 - For CDC-style updates, Pub/Sub BigQuery subscriptions can drive BigQuery CDC
   with `_CHANGE_TYPE` / `_CHANGE_SEQUENCE_NUMBER`.
+
+See [`streaming-ingestion.md`](streaming-ingestion.md) for the runbook, schema
+versioning, and replay/backfill guidance.
 
 ## 3. Real-time analytics: BigQuery continuous queries
 
 Once events stream in:
 
 1. **Real-time baggage SLA** — a continuous query over
-   `APPENDS(TABLE airport_streaming.baggage_events_stream, …)` writing
+   `APPENDS(TABLE airport_bronze.brz_baggage_events_stream, …)` writing
    `airport_realtime.baggage_sla_realtime`, flagging missing/late scans.
 2. **Operational alerts** — a continuous query filtering severe exceptions and
    `EXPORT DATA` to a Pub/Sub topic for downstream alerting.

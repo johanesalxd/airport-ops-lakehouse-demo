@@ -212,8 +212,42 @@ No views, no copies, all declared in Dataform alongside the transformations."*
 - Transformation (Dataform) vs semantics (views/Looker) — clean separation.
 - Spark for messy ingestion, called from Dataform, orchestrated by Composer.
 - Governance built in: RLS + CLS/masking (the `security` stage), plus Gemini
-  auto-metadata. Extensible further: Pub/Sub streaming, continuous queries
-  (documented backlog in the README).
+  auto-metadata. Optional Pub/Sub baggage streaming is available as a separate
+  manual DAG; continuous queries remain the next real-time extension.
+
+## Optional: streaming baggage demo (5 min)
+
+Trigger the separate manual DAG for a short run:
+
+```bash
+gcloud composer environments run "$COMPOSER_ENV" \
+  --location="$REGION" dags trigger -- \
+  -r "baggage-stream-demo" airport_ops_baggage_stream_demo
+```
+
+Then query the bronze stream table:
+
+```sql
+SELECT publish_time, event_id, bag_id, flight_id, scan_type, scan_ts
+FROM `johanesa-playground-326616.airport_bronze.brz_baggage_events_stream`
+WHERE publish_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
+ORDER BY publish_time DESC
+LIMIT 20;
+```
+
+Show the silver dedupe view:
+
+```sql
+SELECT publish_time, event_id, bag_id, flight_id, scan_type, scan_ts
+FROM `johanesa-playground-326616.airport_silver.slv_baggage_events_stream_deduped`
+ORDER BY publish_time DESC
+LIMIT 20;
+```
+
+Say: *"This is intentionally separate from the batch lakehouse DAG. Pub/Sub owns
+the live append into bronze; Dataform picks it up from silver onward for dedupe
+and modeling. Schema revisions validate producers, but table evolution stays a
+BigQuery storage contract."*
 
 ## Anticipated Q&A
 
