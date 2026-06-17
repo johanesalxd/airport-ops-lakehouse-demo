@@ -49,6 +49,14 @@ gcloud services enable \
   cloudaicompanion.googleapis.com \
   pubsub.googleapis.com >/dev/null
 
+# Keep Managed Service for Apache Spark lineage enabled for Spark stored
+# procedures and batch/session workloads. Runtime-level properties in the
+# procedures are still the primary guarantee; this project metadata is the
+# documented project-wide default and matches the live demo environment.
+gcloud compute project-info add-metadata \
+  --project="${PROJECT_ID}" \
+  --metadata=DATAPROC_LINEAGE_ENABLED=true >/dev/null
+
 echo ">> Creating BigQuery datasets in ${REGION}"
 for DS in "${DS_BRONZE}" "${DS_SILVER}" "${DS_GOLD}" "${DS_SEMANTIC}" \
           "${DS_AI}" "${DS_CONTROL}" "${DS_ASSERTIONS}" "${DS_GOVERNANCE}"; do
@@ -198,9 +206,10 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${GEMINI_CONN_SA}" \
   --role="roles/aiplatform.user" --condition=None >/dev/null
 
-echo ">> Granting BigQuery + GCS access to the Spark connection SA"
+echo ">> Granting BigQuery + GCS + lineage access to the Spark connection SA"
 for ROLE in roles/bigquery.dataEditor roles/bigquery.jobUser \
-            roles/storage.objectViewer roles/dataproc.worker; do
+            roles/storage.objectViewer roles/dataproc.worker \
+            roles/datalineage.producer; do
   gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member="serviceAccount:${SPARK_CONN_SA}" --role="${ROLE}" \
     --condition=None >/dev/null
