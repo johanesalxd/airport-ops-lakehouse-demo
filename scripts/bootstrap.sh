@@ -44,9 +44,9 @@ BAGGAGE_SCHEMA_FILE="${REPO_ROOT}/schemas/baggage_scan_event.avsc"
 : "${DS_GOVERNANCE:?set DS_GOVERNANCE}"
 : "${PROJECT_NUMBER:=}"
 : "${RAW_BUCKET:=}"
-: "${SPARK_CONN_SA:=}"
-: "${GEMINI_CONN_SA:=}"
-: "${BIGLAKE_CONN_SA:=}"
+: "${SPARK_CONN_SA:?set SPARK_CONN_SA}"
+: "${GEMINI_CONN_SA:?set GEMINI_CONN_SA}"
+: "${BIGLAKE_CONN_SA:?set BIGLAKE_CONN_SA}"
 : "${PUBSUB_BAGGAGE_SCHEMA:=baggage-scan-event}"
 : "${PUBSUB_BAGGAGE_TOPIC:=baggage-events}"
 : "${PUBSUB_BAGGAGE_DLQ_TOPIC:=baggage-events-dlq}"
@@ -59,12 +59,6 @@ if [[ -z "${RAW_BUCKET}" ]]; then
   RAW_BUCKET="airport-ops-demo-${PROJECT_NUMBER}"
 fi
 DATAFORM_SA_EMAIL="${DATAFORM_SA}@${PROJECT_ID}.iam.gserviceaccount.com"
-
-connection_service_account() {
-  local connection_id="$1"
-  bq --format=json show --connection "${PROJECT_ID}.${REGION}.${connection_id}" \
-    | python3 -c 'import json, sys; print(json.load(sys.stdin)["properties"]["serviceAccountId"])'
-}
 
 require_connection() {
   local connection_id="$1"
@@ -114,27 +108,9 @@ if ! gcloud composer environments describe "${COMPOSER_ENV}" \
   echo "ERROR: Composer environment not found: ${COMPOSER_ENV} (${REGION})" >&2
   exit 1
 fi
-if ! gcloud dataform repositories describe "${DATAFORM_REPO_ID}" \
-    --region="${REGION}" >/dev/null 2>&1; then
-  echo "ERROR: Dataform repository not found: ${DATAFORM_REPO_ID} (${REGION})" >&2
-  echo "Create it manually with service account ${DATAFORM_SA_EMAIL}." >&2
-  echo "Then connect it to the companion Git repo and rerun bootstrap.sh." >&2
-  echo "See README.md and docs/architecture.md for the setup steps." >&2
-  exit 1
-fi
 require_connection "${SPARK_CONNECTION}" "SPARK"
 require_connection "${GEMINI_CONNECTION}" "CLOUD_RESOURCE"
 require_connection "${BIGLAKE_CONNECTION}" "CLOUD_RESOURCE"
-
-if [[ -z "${SPARK_CONN_SA}" ]]; then
-  SPARK_CONN_SA="$(connection_service_account "${SPARK_CONNECTION}")"
-fi
-if [[ -z "${GEMINI_CONN_SA}" ]]; then
-  GEMINI_CONN_SA="$(connection_service_account "${GEMINI_CONNECTION}")"
-fi
-if [[ -z "${BIGLAKE_CONN_SA}" ]]; then
-  BIGLAKE_CONN_SA="$(connection_service_account "${BIGLAKE_CONNECTION}")"
-fi
 
 # Keep Managed Service for Apache Spark lineage enabled for Spark stored
 # procedures and batch/session workloads. Runtime-level properties in the

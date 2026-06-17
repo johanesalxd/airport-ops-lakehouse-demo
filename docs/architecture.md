@@ -237,9 +237,11 @@ identity.
 | `gemini_conn` | CLOUD_RESOURCE | Gemini remote model | `roles/aiplatform.user` |
 | `default-us-central1` | CLOUD_RESOURCE | BigLake external table | GCS read on the raw bucket |
 
-If the connection service-account values are blank in `.env`, `bootstrap.sh`
-discovers them with `bq show --connection`, matching the BigQuery connection
-documentation.
+Copy each connection service account into `.env` before running `bootstrap.sh`.
+BigQuery creates these service accounts when each connection is created; retrieve
+them from the BigQuery connection details pane or with `bq show --connection`.
+`bootstrap.sh` grants IAM to the explicit service account values configured in
+`.env`.
 
 ## IAM (granted by `bootstrap.sh`)
 

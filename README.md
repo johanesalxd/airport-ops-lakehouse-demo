@@ -207,6 +207,10 @@ airport-ops-lakehouse-demo/
   connection for Gemini, and one for BigLake — plus a **Cloud Composer**
   environment and the **GCP Dataform repository** linked to the companion Git repo.
   How these are wired is documented in [`docs/architecture.md`](docs/architecture.md).
+- The three BigQuery connection service accounts must be copied into `.env` as
+  `SPARK_CONN_SA`, `GEMINI_CONN_SA`, and `BIGLAKE_CONN_SA`. BigQuery creates
+  these identities when you create each connection; retrieve them from the
+  connection details pane or with `bq show --connection PROJECT_ID.REGION.CONNECTION_ID`.
 - **[uv](https://docs.astral.sh/uv/)** — manages the Python version + deps
   (`pyarrow`); the scripts run under `uv run` (see `pyproject.toml`). Run
   `uv sync` once. Node + the Dataform CLI are optional (only for local Dataform
@@ -244,6 +248,27 @@ Google Cloud references:
 - [Create a Dataform repository](https://docs.cloud.google.com/dataform/docs/create-repository)
 - [Connect a Dataform repository to Git](https://docs.cloud.google.com/dataform/docs/connect-repository)
 - [Schedule Dataform runs with Managed Airflow](https://docs.cloud.google.com/dataform/docs/schedule-runs)
+
+## BigQuery connection service accounts
+
+Before running `bootstrap.sh`, create the three BigQuery connections listed in
+`.env` and copy each connection service account into `.env`:
+
+```bash
+bq show --connection "$PROJECT_ID.$REGION.$SPARK_CONNECTION"
+bq show --connection "$PROJECT_ID.$REGION.$GEMINI_CONNECTION"
+bq show --connection "$PROJECT_ID.$REGION.$BIGLAKE_CONNECTION"
+```
+
+Copy the returned `serviceAccountId` values to `SPARK_CONN_SA`,
+`GEMINI_CONN_SA`, and `BIGLAKE_CONN_SA`. `bootstrap.sh` validates the connection
+IDs and grants IAM to the exact service accounts configured in `.env`.
+
+Google Cloud references:
+
+- [Create and set up a Cloud resource connection](https://docs.cloud.google.com/bigquery/docs/create-cloud-resource-connection)
+- [Connect to Spark from BigQuery](https://docs.cloud.google.com/bigquery/docs/connect-to-spark)
+- [Manage BigQuery connections](https://docs.cloud.google.com/bigquery/docs/working-with-connections)
 
 ---
 
