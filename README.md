@@ -151,7 +151,7 @@ medallion layer (or a setup step), so the task list *is* the architecture.
 | Repo | Role |
 |---|---|
 | **`airport-ops-lakehouse-demo`** (this repo) | Everything *around* the transformation: data generator, provisioning scripts, the Composer DAG, docs. |
-| **`airport-ops-lakehouse-dataform`** | The Dataform project (the transformation graph). Clone or fork it beside this repo. |
+| **[`airport-ops-lakehouse-dataform`](https://github.com/johanesalxd/airport-ops-lakehouse-dataform)** | The Dataform project (the transformation graph). Clone or fork it beside this repo. |
 
 Two repos because a **GCP Dataform repository expects the Dataform project at the
 Git repo root**, and that repository is what Composer invokes. See
@@ -160,7 +160,7 @@ Git repo root**, and that repository is what Composer invokes. See
 ```
 airport-ops-lakehouse-demo/
   README.md
-  pyproject.toml                    # Python deps (pyarrow), managed by uv
+  pyproject.toml                    # Python deps, managed by uv
   .env.example                      # all project/region/connection/dataset config
   scripts/
     generate_demo_data.py           # deterministic 6-source synthetic generator
@@ -211,8 +211,8 @@ airport-ops-lakehouse-demo/
   `SPARK_CONN_SA`, `GEMINI_CONN_SA`, and `BIGLAKE_CONN_SA`. BigQuery creates
   these identities when you create each connection; retrieve them from the
   connection details pane or with `bq show --connection PROJECT_ID.REGION.CONNECTION_ID`.
-- **[uv](https://docs.astral.sh/uv/)** — manages the Python version + deps
-  (`pyarrow`); the scripts run under `uv run` (see `pyproject.toml`). Run
+- **[uv](https://docs.astral.sh/uv/)** — manages the Python version + deps;
+  the scripts run under `uv run` (see `pyproject.toml`). Run
   `uv sync` once. Node + the Dataform CLI are optional (only for local Dataform
   compile). To build the slide deck, see [`docs/slides/README.md`](docs/slides/README.md).
 - `bootstrap.sh` also creates the `airport_governance` dataset and grants the
@@ -228,7 +228,8 @@ airport-ops-lakehouse-demo/
 ## Manual Dataform repository setup
 
 Before the full `bootstrap.sh` run, create the GCP Dataform repository manually
-and connect it to your fork or clone of `airport-ops-lakehouse-dataform`:
+and connect it to your fork or clone of
+[`airport-ops-lakehouse-dataform`](https://github.com/johanesalxd/airport-ops-lakehouse-dataform):
 
 1. Run `bootstrap.sh` once if you want it to create the `DATAFORM_SA` service
    account. It will stop if the Dataform repository is not ready yet.
