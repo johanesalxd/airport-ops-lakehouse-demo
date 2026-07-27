@@ -22,6 +22,10 @@ official Google Cloud documentation linked inline.
   subscription, bronze stream table, and silver dedupe view.
 - **Automated metadata:** optional data-insights script over silver, gold, and
   semantic objects.
+- **Data sharing (Analytics Hub):** curated `shr_*` authorized views published as
+  a private Data Exchange listing with per-listing subscriber whitelisting and a
+  cost-isolated subscriber (spoke) flow. See §9 and
+  [`data-sharing.md`](data-sharing.md).
 
 ## 1. Governance: row-/column-level security & masking
 
@@ -197,15 +201,32 @@ Point Looker (or Looker Studio) at the `airport_semantic` views — the demo's
 
 ## 9. Data sharing (Analytics Hub)
 
-Publish the curated gold/semantic layer as a governed **data product**:
+**Implemented** as a hub-and-spoke showcase — see
+[`data-sharing.md`](data-sharing.md) for the full runbook.
 
-- Create a **data exchange** and a **listing** over the `airport_gold` /
-  `airport_semantic` dataset (private listing for internal teams, or public).
-- Subscribers get a read-only **linked dataset** and pay only for their own
-  queries; you keep RLS/CLS and **data-egress controls** on the shared data.
+- A Dataform `share` stage builds curated **`shr_*` authorized views** in
+  `airport_share` (over `airport_gold` / `airport_semantic`), so subscribers get
+  governed products, not base tables.
+- `scripts/setup_analytics_hub.py` (publisher/hub) authorizes the share dataset,
+  creates a private **Data Exchange** + **listing**, and whitelists a subscriber
+  **on the listing only**.
+- `scripts/subscribe_analytics_hub.py` (subscriber/spoke) subscribes, creating a
+  read-only **linked dataset** in the subscriber project, and runs a query
+  **billed to the subscriber** — demonstrating **cost isolation**.
+- Governance carries through: upstream RLS/CLS still applies, and Analytics
+  Hub/BigQuery audit logs give subscribe/query visibility.
 
-This is the "serve beyond a single BI tool" extension — turning the lakehouse
-output into a shareable product across org boundaries.
+> **Location note:** Analytics Hub resources are created in the shared dataset's
+> region (`us-central1`), not the `US` multi-region (`AH_LOCATION` in `.env`).
+
+Still open as future extensions:
+
+- **Data-egress controls / DCR variant:** privacy-preserving analysis rules
+  (aggregation thresholds, join restrictions, restricted export) via a Data Clean
+  Room — see the companion
+  [`data-clean-room-demo`](https://github.com/johanesalxd/data-clean-room-demo).
+- **Restricted-subscription approval** wired into the demo scripts (today the
+  data-owner approval step is documented, done via console/API).
 
 ## 10. CI/CD & environments (dev / staging / prod)
 

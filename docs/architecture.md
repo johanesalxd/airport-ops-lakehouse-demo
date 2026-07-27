@@ -114,6 +114,7 @@ assertions and the data-quality summary have something to catch.
 | `airport_semantic` | semantic roll-up views |
 | `airport_ai` | Gemini remote model |
 | `airport_governance` | RLS/CLS showcase (`staff_directory` + row/data policies) |
+| `airport_share` | curated `shr_*` authorized views published via Analytics Hub (NIO data sharing) |
 | `dataform_assertions` | assertion results |
 
 Everything is **regional `us-central1`** and must stay co-located with the Spark
@@ -408,6 +409,19 @@ The demo uses two external tables, to contrast a good and a questionable use:
   policies cannot affect the medallion flow.
 - A caveat: Spark `CALL`s and remote-model calls may not produce perfect
   automatic lineage for every hop; document boundaries where needed.
+
+## Data sharing (Analytics Hub, hub-and-spoke)
+
+The `share` stage builds curated **`shr_*` authorized views** in `airport_share`
+over `airport_gold` / `airport_semantic`. `airport_share` is added as an
+**authorized dataset** on those sources so the views resolve without exposing
+base tables. `scripts/setup_analytics_hub.py` (publisher/hub) creates a private
+**Data Exchange** + **listing** over `airport_share` and whitelists a subscriber
+**on the listing only**; `scripts/subscribe_analytics_hub.py` (subscriber/spoke)
+creates a read-only **linked dataset** in the subscriber project and runs a query
+**billed to the subscriber** (cost isolation). Analytics Hub resources are
+regional and must match the shared dataset's location (`us-central1`). Full
+runbook: [`data-sharing.md`](data-sharing.md).
 
 See [`roadmap.md`](roadmap.md) for further governance extensions (RLS/CLS on
 pipeline tables, authorized views), streaming, continuous queries, and automated

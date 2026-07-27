@@ -53,6 +53,7 @@ AI_DATASET = Variable.get("airport_ops_ai_dataset")
 CONTROL_DATASET = Variable.get("airport_ops_control_dataset")
 ASSERTIONS_DATASET = Variable.get("airport_ops_assertions_dataset")
 GOVERNANCE_DATASET = Variable.get("airport_ops_governance_dataset")
+SHARE_DATASET = Variable.get("airport_ops_share_dataset", default_var="airport_share")
 
 ADMIN_GROUP = Variable.get("airport_ops_admin_group")
 SALES_GROUP = Variable.get("airport_ops_sales_group")
@@ -72,6 +73,10 @@ STAGES = [
     # attaches RLS + CLS policies. Independent of the medallion flow (nothing
     # reads staff_directory), so its access policies cannot affect the pipeline.
     "security",
+    # NIO data-sharing showcase: builds the curated shr_* authorized views in the
+    # share dataset. Publishing them via Analytics Hub (exchange/listing/IAM) is a
+    # separate, out-of-band step run by scripts/setup_analytics_hub.py.
+    "share",
 ]
 
 default_args = {
@@ -107,6 +112,7 @@ def _compilation_config() -> dict:
             "silverDataset": SILVER_DATASET,
             "goldDataset": GOLD_DATASET,
             "semanticDataset": SEMANTIC_DATASET,
+            "shareDataset": SHARE_DATASET,
             "aiDataset": AI_DATASET,
             "controlDataset": CONTROL_DATASET,
             "governanceDataset": GOVERNANCE_DATASET,

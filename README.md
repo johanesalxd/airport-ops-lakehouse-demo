@@ -127,11 +127,12 @@ medallion layer (or a setup step), so the task list *is* the architecture.
 | `run_semantic` | Query-time roll-up **views** — no data materialised | BigQuery views | 3 `sem_*` views |
 | `run_quality` | Runs assertions as **gates** + writes the data-quality summary | Dataform assertions | `gold_data_quality_summary`, assertion results |
 | `run_security` | Governance showcase: builds the self-contained `staff_directory` and attaches RLS + CLS/masking policies (independent of the pipeline) | Dataform `ROW ACCESS POLICY` + `DATA_POLICY` | `airport_governance.staff_directory`, row/data policies |
+| `run_share` | Data-sharing showcase: builds the curated `shr_*` authorized views in `airport_share` (publishing the listing is a separate script) | Dataform views | `airport_share.shr_*` |
 | `publish_run_summary` | Smoke-tests that the semantic layer is queryable | `BigQueryInsertJob` | Query job in BQ history |
 
 ### 3. What success looks like
 
-- **All 10 tasks green**, in order `compile_repo → … → security → publish_run_summary`.
+- **All 11 tasks green**, in order `compile_repo → … → security → share → publish_run_summary`.
 - **Row counts** (3-day seed) roughly: bronze ~123 flights; gold `fct_flight`
   ~123, `fct_baggage` ~300+, `fct_feedback` ~75.
 - **Semantic views return rows** — `sem_airport_operations_daily` shows a rising
@@ -168,6 +169,8 @@ airport-ops-lakehouse-demo/
     generate_data_insights.sh       # thin wrapper for the data-insights script
     bootstrap.sh                    # datasets, bucket, SA, IAM, Composer DAG upload
     upload_demo_data.sh             # generate + upload to GCS
+    setup_analytics_hub.py/.sh      # publisher: publish airport_share via Analytics Hub (NIO)
+    subscribe_analytics_hub.py/.sh  # subscriber: link dataset + cost-isolated query
     teardown.sh                     # remove demo resources (keeps shared connections)
   airport_ops_demo/
     baggage_model.py                # shared batch + streaming baggage model
@@ -184,6 +187,7 @@ airport-ops-lakehouse-demo/
     why-dataform-not-python.md
     demo-script.md                  # the workshop runbook
     operations.md                   # runbook: logs, caveats, known issues
+    data-sharing.md                 # Analytics Hub hub-and-spoke (NIO) runbook
     roadmap.md                      # implemented showcases and next steps
     slides/                         # Marp workshop deck (+ README for building it)
 ```
@@ -292,7 +296,12 @@ bash scripts/upload_demo_data.sh 3 42
 
 # 4. Run the pipeline: trigger the `airport_ops_lakehouse` DAG in Composer.
 #    It compiles the Dataform repo and runs it stage by stage:
-#    setup → ingestion → bronze → silver → gold → semantic → quality → security
+#    setup → ingestion → bronze → silver → gold → semantic → quality → security → share
+
+# 4b. (Optional) Publish the curated share dataset via Analytics Hub (NIO
+#     hub-and-spoke) and subscribe from the spoke project. See docs/data-sharing.md
+bash scripts/setup_analytics_hub.sh          # publisher: exchange + listing + whitelist
+bash scripts/subscribe_analytics_hub.sh      # subscriber: linked dataset + cost-isolated query
 
 # 5. (Optional) Auto-generate BigQuery data insights — AI descriptions, suggested
 #    questions + SQL, and a dataset relationship graph — over the built layers:
@@ -321,18 +330,27 @@ Gemini enrichment in `airport_silver.slv_customer_feedback_enriched`, and
 | Orchestration | Composer DAG driving Dataform by stage/tag |
 | Streaming ingestion showcase | manual Composer DAG → Pub/Sub schema/topic → BigQuery subscription → bronze stream table + silver dedupe view |
 | Lineage | BigQuery / Dataplex lineage from raw → gold |
+| Data sharing | Analytics Hub hub-and-spoke: `shr_*` authorized views → private Data Exchange listing, subscriber whitelisting + cost-isolated linked dataset |
 | Cost control | small synthetic volumes, partition/cluster, teardown script |
 
 **Covered as a governance showcase:** row-level + column-level security and
 masking (the `security` stage — a self-contained `staff_directory` table with RLS
 and SQL `DATA_POLICY` masking).
 
+**Covered as a data-sharing showcase:** Analytics Hub **hub-and-spoke** sharing
+(the `share` stage + `scripts/setup_analytics_hub.py` /
+`scripts/subscribe_analytics_hub.py`) — curated `shr_*` authorized views
+published as a private Data Exchange listing, per-listing subscriber
+whitelisting, and a cost-isolated subscriber (spoke) flow. See
+[`docs/data-sharing.md`](docs/data-sharing.md).
+
 **Not covered (intentionally — see the roadmap):** managed data quality
 (Dataplex auto DQ), BigQuery continuous queries, conversational analytics / data agents, vector
-search & embeddings, an Iceberg open-table-format variant, a BI dashboard, data
-sharing (Analytics Hub), and Dataform CI/CD environments. These are documented as
-next steps in [`docs/roadmap.md`](docs/roadmap.md). **Automated BigQuery data
-insights** is available as an optional script (see *How to run* below).
+search & embeddings, an Iceberg open-table-format variant, a BI dashboard, the
+privacy-preserving **Data Clean Room** variant of data sharing, and Dataform
+CI/CD environments. These are documented as next steps in
+[`docs/roadmap.md`](docs/roadmap.md). **Automated BigQuery data insights** is
+available as an optional script (see *How to run* below).
 
 > Measured against Google Cloud's
 > [end-to-end data integration](https://cloud.google.com/use-cases/data-integration)
@@ -358,6 +376,7 @@ question it answers. In brief:
 | [`docs/demo-script.md`](docs/demo-script.md) | The workshop runbook (checklist, live flow, Q&A) |
 | [`docs/operations.md`](docs/operations.md) | Runbook: **where logs live**, Composer 3 caveats, idempotency, known issues |
 | [`docs/streaming-ingestion.md`](docs/streaming-ingestion.md) | Optional Pub/Sub baggage stream, schema versioning, replay/backfill |
+| [`docs/data-sharing.md`](docs/data-sharing.md) | Analytics Hub hub-and-spoke (NIO): curated share views, publish/subscribe, cost isolation, governance |
 | [`docs/roadmap.md`](docs/roadmap.md) | Governance, streaming, continuous queries, data insights, CI/CD environments |
 | [`docs/slides/README.md`](docs/slides/README.md) | The Marp workshop deck and how to build/update it |
 

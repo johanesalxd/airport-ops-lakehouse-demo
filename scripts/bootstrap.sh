@@ -42,6 +42,7 @@ BAGGAGE_SCHEMA_FILE="${REPO_ROOT}/schemas/baggage_scan_event.avsc"
 : "${DS_CONTROL:?set DS_CONTROL}"
 : "${DS_ASSERTIONS:?set DS_ASSERTIONS}"
 : "${DS_GOVERNANCE:?set DS_GOVERNANCE}"
+: "${DS_SHARE:?set DS_SHARE}"
 : "${PROJECT_NUMBER:=}"
 : "${RAW_BUCKET:=}"
 : "${SPARK_CONN_SA:?set SPARK_CONN_SA}"
@@ -126,7 +127,8 @@ gcloud compute project-info add-metadata \
 
 echo ">> Creating BigQuery datasets in ${REGION}"
 for DS in "${DS_BRONZE}" "${DS_SILVER}" "${DS_GOLD}" "${DS_SEMANTIC}" \
-          "${DS_AI}" "${DS_CONTROL}" "${DS_ASSERTIONS}" "${DS_GOVERNANCE}"; do
+          "${DS_AI}" "${DS_CONTROL}" "${DS_ASSERTIONS}" "${DS_GOVERNANCE}" \
+          "${DS_SHARE}"; do
   if bq --location="${REGION}" show --dataset "${PROJECT_ID}:${DS}" >/dev/null 2>&1; then
     echo "   - ${DS} (exists)"
   else
@@ -314,6 +316,7 @@ set_airflow_variable "airport_ops_ai_dataset" "${DS_AI}"
 set_airflow_variable "airport_ops_control_dataset" "${DS_CONTROL}"
 set_airflow_variable "airport_ops_assertions_dataset" "${DS_ASSERTIONS}"
 set_airflow_variable "airport_ops_governance_dataset" "${DS_GOVERNANCE}"
+set_airflow_variable "airport_ops_share_dataset" "${DS_SHARE}"
 set_airflow_variable "airport_ops_admin_group" "${ADMIN_GROUP}"
 set_airflow_variable "airport_ops_sales_group" "${SALES_GROUP}"
 set_airflow_variable "airport_ops_pubsub_baggage_topic" "${PUBSUB_BAGGAGE_TOPIC}"

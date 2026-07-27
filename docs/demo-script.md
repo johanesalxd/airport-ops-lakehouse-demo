@@ -207,6 +207,43 @@ No views, no copies, all declared in Dataform alongside the transformations."*
 > If the sales view still shows all rows/raw values, the data-policy IAM may need
 > a minute to propagate after the run — re-run the query.
 
+## 7d. (Optional) Data sharing: Analytics Hub hub-and-spoke / NIO (5 min) — live
+
+This maps directly to the NIO deep-dive agenda: **hub owns storage, spokes pay
+compute.** Full runbook: [`data-sharing.md`](data-sharing.md).
+
+1. **Architecture alignment** — the `share` stage built curated `shr_*`
+   authorized views in `airport_share` over gold/semantic (subscribers get
+   products, not base tables).
+2. **Publisher workflow (hub / CAG admin)** — create the private exchange +
+   listing and whitelist the subscriber:
+
+   ```bash
+   source .env && bash scripts/setup_analytics_hub.sh
+   ```
+
+   Show, in Analytics Hub: the data exchange, the listing over `airport_share`,
+   and the subscriber whitelisted **on the listing** (not project-wide).
+3. **Subscriber onboarding (spoke)** — from the subscriber project, link the
+   dataset and run a **cost-isolated** query:
+
+   ```bash
+   source .env && bash scripts/subscribe_analytics_hub.sh
+   ```
+
+   Point out the job ran in the **subscriber** project (`total_bytes_billed`
+   there) — storage stayed with the publisher.
+4. **Governance & monitoring** — upstream RLS/CLS still applies to the shared
+   views; Analytics Hub/BigQuery audit logs show who subscribed and queried.
+
+Say: *"CAG publishes once; each partner (CAAS, SQ, SATS) subscribes into their own
+project and pays for their own queries. You keep the data and the governance; they
+get a live, read-only product — no copies, no egress of raw rows."*
+
+> Data-owner approval: publish as a **restricted subscription** so requests wait
+> for approval (Analytics Hub → listing → Subscriptions → Approve). Whitelisting
+> controls who can *request*; approval controls who is *admitted*.
+
 ## 8. Close (2 min) — concept
 
 - Transformation (Dataform) vs semantics (views/Looker) — clean separation.
@@ -214,6 +251,8 @@ No views, no copies, all declared in Dataform alongside the transformations."*
 - Governance built in: RLS + CLS/masking (the `security` stage), plus Gemini
   auto-metadata. Optional Pub/Sub baggage streaming is available as a separate
   manual DAG; continuous queries remain the next real-time extension.
+- Data sharing beyond BI: Analytics Hub hub-and-spoke (the `share` stage +
+  setup/subscribe scripts) — the NIO model, with cost isolation per subscriber.
 
 ## Optional: streaming baggage demo (5 min)
 
