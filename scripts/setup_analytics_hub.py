@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Publisher-side Analytics Hub setup for the NIO data-sharing showcase.
+"""Publisher-side Analytics Hub setup for the hub-and-spoke data-sharing showcase.
 
 Publishes the curated share dataset (the shr_* authorized views built by the
 Dataform `share` stage) as a private BigQuery Analytics Hub **Data Exchange
 (DCX)** listing, and whitelists a subscriber principal. This is the "hub" side of
-the NIO hub-and-spoke model: the publisher (CAG) owns the storage; subscribers
+the hub-and-spoke model: the publisher (hub) owns the storage; subscribers
 (spokes) link the dataset in their own project and pay for their own queries.
 
 Steps:
@@ -15,9 +15,6 @@ Steps:
     4. Grant roles/analyticshub.subscriber to the subscriber principal on the
        listing (per-listing "whitelisting"; never granted project-wide).
 
-Adapted from data-clean-room-demo/setup_ah_dcx.py (generalized: no hardcoded
-dataset choices, configurable display names, added source-dataset authorization).
-
 Analytics Hub resources MUST be created in the same location as the shared
 dataset's region (e.g. us-central1), not the "US" multi-region.
 
@@ -27,7 +24,7 @@ Usage:
         --share-dataset airport_share \\
         --source-datasets airport_gold,airport_semantic \\
         --location us-central1 \\
-        --exchange-id nio_exchange \\
+        --exchange-id partner_exchange \\
         --listing-id airport_ops_daily \\
         --subscriber-principal user:partner@example.com
 """
@@ -41,6 +38,24 @@ from google.cloud.bigquery_analyticshub_v1 import types
 from google.cloud.exceptions import GoogleCloudError
 
 
+def _authorized_dataset_id(entry: bigquery.AccessEntry) -> str | None:
+    """Return the datasetId of an authorized-dataset access entry, else None.
+
+    Handles both representations so re-runs stay idempotent across library
+    versions: the dict form used by google-cloud-bigquery<=3.42
+    ({"dataset": {"datasetId": ...}, "targetTypes": [...]}), and the
+    DatasetAccessEntry object form used by newer versions (entity_id / .dataset
+    is a DatasetReference).
+    """
+    if entry.entity_type != "dataset":
+        return None
+    entity_id = entry.entity_id
+    if isinstance(entity_id, dict):
+        return entity_id.get("dataset", {}).get("datasetId")
+    dataset_ref = getattr(entity_id, "dataset", None) or getattr(entry, "dataset", None)
+    return getattr(dataset_ref, "dataset_id", None)
+
+
 def authorize_share_dataset(
     publisher_project_id: str,
     share_dataset: str,
@@ -51,12 +66,14 @@ def authorize_share_dataset(
     The shr_* views live in `share_dataset` but SELECT from tables/views in the
     gold and semantic datasets. Adding the share dataset as an authorized dataset
     lets those views resolve without granting subscribers access to the base data.
+
+    Raises on failure (fail-fast): if authorization can't be applied, the listing
+    would publish but subscribers' linked views would not resolve, so we stop.
     """
     client = bigquery.Client(project=publisher_project_id)
 
-    # Authorized-dataset entries are represented as an AccessEntry whose entity is
-    # a dict: {"dataset": {projectId, datasetId}, "targetTypes": ["VIEWS"]}. The
-    # installed google-cloud-bigquery has no dedicated DatasetAccessEntry class.
+    # Authorized-dataset entries are AccessEntry objects whose entity is a dict:
+    # {"dataset": {projectId, datasetId}, "targetTypes": ["VIEWS"]}.
     authorized_entity = {
         "dataset": {
             "projectId": publisher_project_id,
@@ -75,13 +92,7 @@ def authorize_share_dataset(
             )
             entries = list(source_ds.access_entries)
 
-            already = any(
-                e.entity_type == "dataset"
-                and isinstance(e.entity_id, dict)
-                and e.entity_id.get("dataset", {}).get("datasetId") == share_dataset
-                for e in entries
-            )
-            if already:
+            if any(_authorized_dataset_id(e) == share_dataset for e in entries):
                 print(f"⚠ Share dataset already authorized on '{source}'")
                 continue
 
@@ -93,10 +104,12 @@ def authorize_share_dataset(
             source_ds.access_entries = entries
             client.update_dataset(source_ds, ["access_entries"])
             print(f"✓ Authorized share dataset '{share_dataset}' to read '{source}'")
-        except Exception as e:  # noqa: BLE001 - surface a clear, actionable message
-            print(f"⚠ Could not authorize '{share_dataset}' on '{source}': {e}")
-            print("  The listing will publish, but linked views may not resolve")
-            print("  until the share dataset is authorized on the source dataset.")
+        except Exception as e:
+            raise RuntimeError(
+                f"Could not authorize '{share_dataset}' on '{source}': {e}. "
+                "Fix dataset permissions and re-run; without this the linked "
+                "views will not resolve for subscribers."
+            ) from e
 
 
 def create_exchange(
@@ -112,7 +125,7 @@ def create_exchange(
         {
             "display_name": display_name,
             "description": (
-                "Private data exchange for the NIO hub-and-spoke data-sharing "
+                "Private data exchange for the hub-and-spoke data-sharing "
                 "model: the publisher owns storage, subscribers pay their own "
                 "compute."
             ),
@@ -126,9 +139,9 @@ def create_exchange(
             data_exchange_id=exchange_id,
             data_exchange=exchange,
         )
-        operation = client.create_data_exchange(request=request)
-        print(f"✓ Data Exchange created: {operation.name}")
-        return operation.name
+        created = client.create_data_exchange(request=request)
+        print(f"✓ Data Exchange created: {created.name}")
+        return created.name
     except GoogleCloudError as e:
         if "already exists" in str(e).lower():
             name = f"{parent}/dataExchanges/{exchange_id}"
@@ -164,9 +177,9 @@ def create_listing(
             listing_id=listing_id,
             listing=listing,
         )
-        operation = client.create_listing(request=request)
-        print(f"✓ Listing created: {operation.name}")
-        return operation.name
+        created = client.create_listing(request=request)
+        print(f"✓ Listing created: {created.name}")
+        return created.name
     except GoogleCloudError as e:
         if "already exists" in str(e).lower():
             name = f"{exchange_name}/listings/{listing_id}"
@@ -214,7 +227,7 @@ def grant_subscriber(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Publish the curated share dataset via Analytics Hub (NIO hub side)."
+        description="Publish the curated share dataset via Analytics Hub (publisher/hub side)."
     )
     parser.add_argument("--publisher-project-id", required=True)
     parser.add_argument("--share-dataset", required=True)
@@ -225,7 +238,7 @@ def main() -> None:
     )
     parser.add_argument("--location", default="us-central1")
     parser.add_argument("--exchange-id", required=True)
-    parser.add_argument("--exchange-display-name", default="NIO Airport Operations Data Exchange")
+    parser.add_argument("--exchange-display-name", default="Partner Data Exchange")
     parser.add_argument("--listing-id", required=True)
     parser.add_argument("--listing-display-name", default="Airport Operations - Curated Share")
     parser.add_argument(
@@ -236,7 +249,7 @@ def main() -> None:
     args = parser.parse_args()
 
     print("=" * 70)
-    print("NIO Data Sharing - Analytics Hub Publisher Setup (DCX)")
+    print("Hub-and-Spoke Data Sharing - Analytics Hub Publisher Setup (DCX)")
     print("=" * 70)
     print(f"Publisher project : {args.publisher_project_id}")
     print(f"Share dataset     : {args.share_dataset}")

@@ -31,6 +31,9 @@ set -euo pipefail
 : "${ANALYTICS_HUB_LISTING:=}"
 : "${SUBSCRIBER_PROJECT:=}"
 : "${SUBSCRIBER_LINKED_DATASET:=airport_ops_shared}"
+# Optional audit-log sink for the data-sharing showcase (see docs/data-sharing.md).
+: "${AUDIT_DATASET:=sharing_audit}"
+: "${AUDIT_SINK:=sharing_audit_sink}"
 : "${RAW_BUCKET:=}"
 : "${PUBSUB_BAGGAGE_SCHEMA:=baggage-scan-event}"
 : "${PUBSUB_BAGGAGE_TOPIC:=baggage-events}"
@@ -47,7 +50,7 @@ fi
 read -r -p "This will DELETE demo datasets, bucket data, and Pub/Sub resources. Continue? [y/N] " ans
 [[ "${ans}" == "y" || "${ans}" == "Y" ]] || { echo "Aborted."; exit 1; }
 
-# NIO data-sharing teardown (best-effort; runs before dataset deletion so the
+# Data-sharing teardown (best-effort; runs before dataset deletion so the
 # shared dataset's listing is removed first). Subscriber linked dataset lives in
 # the spoke project; delete it there if configured.
 if [[ -n "${SUBSCRIBER_PROJECT}" ]]; then
@@ -68,6 +71,14 @@ if [[ -n "${ANALYTICS_HUB_EXCHANGE}" ]]; then
     2>/dev/null && echo "deleted data exchange ${ANALYTICS_HUB_EXCHANGE}" \
     || echo "skip data exchange ${ANALYTICS_HUB_EXCHANGE}"
 fi
+
+# Optional audit-log sink + dataset (only present if you set up audit logging).
+gcloud logging sinks delete "${AUDIT_SINK}" --project="${PROJECT_ID}" --quiet \
+  2>/dev/null && echo "deleted log sink ${AUDIT_SINK}" \
+  || echo "skip log sink ${AUDIT_SINK}"
+bq --location="${AH_LOCATION}" rm -r -f -d "${PROJECT_ID}:${AUDIT_DATASET}" \
+  2>/dev/null && echo "deleted audit dataset ${AUDIT_DATASET}" \
+  || echo "skip audit dataset ${AUDIT_DATASET}"
 
 for DS in "${DS_BRONZE}" "${DS_SILVER}" "${DS_GOLD}" "${DS_SEMANTIC}" \
           "${DS_AI}" "${DS_CONTROL}" "${DS_ASSERTIONS}" "${DS_GOVERNANCE}" \

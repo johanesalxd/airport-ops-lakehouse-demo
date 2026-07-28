@@ -169,8 +169,9 @@ airport-ops-lakehouse-demo/
     generate_data_insights.sh       # thin wrapper for the data-insights script
     bootstrap.sh                    # datasets, bucket, SA, IAM, Composer DAG upload
     upload_demo_data.sh             # generate + upload to GCS
-    setup_analytics_hub.py/.sh      # publisher: publish airport_share via Analytics Hub (NIO)
+    setup_analytics_hub.py/.sh      # publisher: publish airport_share via Analytics Hub
     subscribe_analytics_hub.py/.sh  # subscriber: link dataset + cost-isolated query
+    manage_subscriptions.py/.sh     # publisher: list/revoke subscriptions (governance)
     teardown.sh                     # remove demo resources (keeps shared connections)
   airport_ops_demo/
     baggage_model.py                # shared batch + streaming baggage model
@@ -187,7 +188,7 @@ airport-ops-lakehouse-demo/
     why-dataform-not-python.md
     demo-script.md                  # the workshop runbook
     operations.md                   # runbook: logs, caveats, known issues
-    data-sharing.md                 # Analytics Hub hub-and-spoke (NIO) runbook
+    data-sharing.md                 # Analytics Hub hub-and-spoke runbook
     roadmap.md                      # implemented showcases and next steps
     slides/                         # Marp workshop deck (+ README for building it)
 ```
@@ -298,10 +299,11 @@ bash scripts/upload_demo_data.sh 3 42
 #    It compiles the Dataform repo and runs it stage by stage:
 #    setup → ingestion → bronze → silver → gold → semantic → quality → security → share
 
-# 4b. (Optional) Publish the curated share dataset via Analytics Hub (NIO
-#     hub-and-spoke) and subscribe from the spoke project. See docs/data-sharing.md
+# 4b. (Optional) Publish the curated share dataset via Analytics Hub
+#     (hub-and-spoke) and subscribe from the spoke project. See docs/data-sharing.md
 bash scripts/setup_analytics_hub.sh          # publisher: exchange + listing + whitelist
 bash scripts/subscribe_analytics_hub.sh      # subscriber: linked dataset + cost-isolated query
+bash scripts/manage_subscriptions.sh --list  # publisher: who has subscribed (governance)
 
 # 5. (Optional) Auto-generate BigQuery data insights — AI descriptions, suggested
 #    questions + SQL, and a dataset relationship graph — over the built layers:
@@ -376,7 +378,7 @@ question it answers. In brief:
 | [`docs/demo-script.md`](docs/demo-script.md) | The workshop runbook (checklist, live flow, Q&A) |
 | [`docs/operations.md`](docs/operations.md) | Runbook: **where logs live**, Composer 3 caveats, idempotency, known issues |
 | [`docs/streaming-ingestion.md`](docs/streaming-ingestion.md) | Optional Pub/Sub baggage stream, schema versioning, replay/backfill |
-| [`docs/data-sharing.md`](docs/data-sharing.md) | Analytics Hub hub-and-spoke (NIO): curated share views, publish/subscribe, cost isolation, governance |
+| [`docs/data-sharing.md`](docs/data-sharing.md) | Analytics Hub hub-and-spoke: curated share views, publish/subscribe, cost isolation, subscription governance, audit |
 | [`docs/roadmap.md`](docs/roadmap.md) | Governance, streaming, continuous queries, data insights, CI/CD environments |
 | [`docs/slides/README.md`](docs/slides/README.md) | The Marp workshop deck and how to build/update it |
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Subscriber-side Analytics Hub step for the NIO data-sharing showcase.
+"""Subscriber-side Analytics Hub step for the hub-and-spoke data-sharing showcase.
 
 Runs as the "spoke": subscribes to the publisher's listing, which creates a
 read-only **linked dataset** in the subscriber's own project, then runs a sample
@@ -17,7 +17,7 @@ Usage:
         --subscriber-project-id my-spoke-project \\
         --publisher-project-id my-hub-project \\
         --location us-central1 \\
-        --exchange-id nio_exchange \\
+        --exchange-id partner_exchange \\
         --listing-id airport_ops_daily \\
         --linked-dataset airport_ops_shared \\
         --sample-view shr_airport_operations_daily
@@ -83,7 +83,7 @@ def run_cost_isolated_query(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Subscribe to a NIO Analytics Hub listing (spoke side) and prove cost isolation."
+        description="Subscribe to an Analytics Hub listing (spoke side) and prove cost isolation."
     )
     parser.add_argument("--subscriber-project-id", required=True)
     parser.add_argument("--publisher-project-id", required=True)
@@ -105,7 +105,7 @@ def main() -> None:
     )
 
     print("=" * 70)
-    print("NIO Data Sharing - Analytics Hub Subscriber (spoke)")
+    print("Hub-and-Spoke Data Sharing - Analytics Hub Subscriber (spoke)")
     print("=" * 70)
     print(f"Subscriber project: {args.subscriber_project_id}")
     print(f"Listing           : {listing_name}")

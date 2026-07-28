@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Thin wrapper around scripts/subscribe_analytics_hub.py (subscriber / NIO spoke
+# Thin wrapper around scripts/subscribe_analytics_hub.py (subscriber / spoke
 # side). Subscribes to the publisher's listing (creating a linked dataset in the
 # subscriber project) and runs a cost-isolated sample query.
 #

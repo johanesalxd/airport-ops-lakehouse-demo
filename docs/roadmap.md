@@ -213,6 +213,9 @@ Point Looker (or Looker Studio) at the `airport_semantic` views — the demo's
 - `scripts/subscribe_analytics_hub.py` (subscriber/spoke) subscribes, creating a
   read-only **linked dataset** in the subscriber project, and runs a query
   **billed to the subscriber** — demonstrating **cost isolation**.
+- `scripts/manage_subscriptions.py` (publisher/hub) **lists and revokes**
+  subscriptions — the data-owner governance surface (admission is the subscriber
+  grant; revoke detaches a subscriber's linked dataset).
 - Governance carries through: upstream RLS/CLS still applies, and Analytics
   Hub/BigQuery audit logs give subscribe/query visibility.
 
@@ -225,8 +228,10 @@ Still open as future extensions:
   (aggregation thresholds, join restrictions, restricted export) via a Data Clean
   Room — see the companion
   [`data-clean-room-demo`](https://github.com/johanesalxd/data-clean-room-demo).
-- **Restricted-subscription approval** wired into the demo scripts (today the
-  data-owner approval step is documented, done via console/API).
+- **Commercial / Marketplace listings** with the "Request access → approve"
+  flow and monetization — a different listing type from this private-exchange
+  showcase (here, admission is the per-listing subscriber grant plus
+  list/revoke governance).
 
 ## 10. CI/CD & environments (dev / staging / prod)
 

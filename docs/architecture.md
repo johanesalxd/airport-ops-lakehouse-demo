@@ -114,7 +114,7 @@ assertions and the data-quality summary have something to catch.
 | `airport_semantic` | semantic roll-up views |
 | `airport_ai` | Gemini remote model |
 | `airport_governance` | RLS/CLS showcase (`staff_directory` + row/data policies) |
-| `airport_share` | curated `shr_*` authorized views published via Analytics Hub (NIO data sharing) |
+| `airport_share` | curated `shr_*` authorized views published via Analytics Hub (hub-and-spoke data sharing) |
 | `dataform_assertions` | assertion results |
 
 Everything is **regional `us-central1`** and must stay co-located with the Spark

@@ -73,9 +73,10 @@ STAGES = [
     # attaches RLS + CLS policies. Independent of the medallion flow (nothing
     # reads staff_directory), so its access policies cannot affect the pipeline.
     "security",
-    # NIO data-sharing showcase: builds the curated shr_* authorized views in the
-    # share dataset. Publishing them via Analytics Hub (exchange/listing/IAM) is a
-    # separate, out-of-band step run by scripts/setup_analytics_hub.py.
+    # Hub-and-spoke data-sharing showcase: builds the curated shr_* authorized
+    # views in the share dataset. Publishing them via Analytics Hub
+    # (exchange/listing/IAM) is a separate, out-of-band step run by
+    # scripts/setup_analytics_hub.py.
     "share",
 ]
 

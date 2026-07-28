@@ -1,4 +1,4 @@
-# Data sharing with BigQuery Analytics Hub (NIO hub-and-spoke)
+# Data sharing with BigQuery Analytics Hub (hub-and-spoke)
 
 This showcase publishes the curated gold/semantic layer as a governed **data
 product** using **BigQuery Analytics Hub**, following a **hub-and-spoke** model:
@@ -44,13 +44,13 @@ authorization automatically before publishing.
 ## DCX vs DCR
 
 This showcase uses a standard **Data Exchange (DCX)** — direct, read-only access
-to the curated views, which matches the NIO model (share a governed product; the
-subscriber runs normal SQL and pays for it). A **Data Clean Room (DCR)** adds
-privacy-preserving analysis rules (aggregation thresholds, join restrictions,
-egress blocking) for cases where two parties join sensitive data without either
-seeing the other's rows. See the companion
-[`data-clean-room-demo`](https://github.com/johanesalxd/data-clean-room-demo)
-(`setup_ah_dcr.py`, `E2E_HIERARCHY.md`) for the DCR variant.
+to the curated views (share a governed product; the subscriber runs normal SQL
+and pays for it). A **Data Clean Room (DCR)** adds privacy-preserving analysis
+rules (aggregation thresholds, join restrictions, egress blocking) for cases
+where two parties join sensitive data without either seeing the other's rows. See
+the companion
+[`data-clean-room-demo`](https://github.com/johanesalxd/data-clean-room-demo) for
+the DCR variant.
 
 ## Prerequisites
 
@@ -106,42 +106,113 @@ This subscribes from `SUBSCRIBER_PROJECT`, creating the read-only linked dataset
 project** and prints the job's project + bytes billed — demonstrating cost
 isolation. Use `--skip-query` to only subscribe.
 
-### Data-owner approval flow (restricted subscriptions)
+### Data-owner approval & governance
 
-For an approval step, publish the listing as a **restricted subscription**: the
-subscriber's request enters a pending state and the **data owner approves** it
-before the linked dataset is created. In the console this is **Analytics Hub →
-listing → Subscriptions → Approve/Reject**; programmatically it is the
-subscription request/approval on the listing. The whitelisting grant above
-controls *who may request*; approval controls *who is admitted*.
+A **private** listing has no separate pending/approve queue — that "Request
+access → approve" flow is a **commercial/Marketplace** listing feature. For a
+private exchange, the data owner governs access in three steps:
+
+1. **Admission** — granting `roles/analyticshub.subscriber` on the listing (done
+   by `setup_analytics_hub.sh`). *This grant is the approval decision:* only
+   whitelisted principals can subscribe.
+2. **Visibility** — list who has subscribed:
+
+   ```bash
+   source .env && bash scripts/manage_subscriptions.sh --list
+   ```
+
+3. **Revocation** — revoke a subscription (detaches the subscriber's linked
+   dataset):
+
+   ```bash
+   source .env && bash scripts/manage_subscriptions.sh \
+     --revoke projects/SUBSCRIBER_NUMBER/locations/us-central1/subscriptions/SUB_ID
+   ```
+
+   (Use the subscription name printed by `--list`.)
+
+In the console the same surface is **Analytics Hub → listing → set permissions**
+(admission) and **→ listing → Subscriptions** (view/revoke).
 
 ## Governance & monitoring
 
-- **Audit logging:** Analytics Hub and BigQuery emit Cloud Audit Logs. Query who
-  subscribed and who queried the shared data, e.g.:
+**Cost visibility (cost isolation) — run in the SUBSCRIBER project.** Subscriber
+queries against the linked dataset are billed to the subscriber, visible in its
+own `INFORMATION_SCHEMA.JOBS_BY_PROJECT`:
 
-  ```sql
-  SELECT
-    timestamp,
-    protopayload_auditlog.authenticationInfo.principalEmail AS principal,
-    protopayload_auditlog.methodName AS method,
-    resource.labels.project_id AS project_id
-  FROM `region-us-central1`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
-  -- or the *_cloudaudit_googleapis_com_data_access sink for AH subscribe/list events
-  WHERE method LIKE 'google.cloud.bigquery.analyticshub%'
-  ORDER BY timestamp DESC
-  ```
+```sql
+SELECT
+  job_id,
+  user_email,
+  total_bytes_billed,
+  creation_time
+FROM `region-us-central1`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+WHERE creation_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)
+  AND state = 'DONE'
+ORDER BY creation_time DESC;
+```
 
-- **Cost visibility:** subscriber jobs appear in the subscriber project's
-  `INFORMATION_SCHEMA.JOBS_BY_PROJECT` with their own `total_bytes_billed`.
+**Audit logging.** Analytics Hub emits Cloud Audit Logs under the service
+`analyticshub.googleapis.com`. Two things determine *where* an event lands (see
+[Sharing audit logging](https://docs.cloud.google.com/bigquery/docs/analytics-hub-audit-logging)):
+
+- **Log type.** Write methods (`CreateDataExchange`, `CreateListing`,
+  `SetIamPolicy` = whitelisting, `DeleteListing`, `RevokeSubscription`) are
+  **Admin Activity** (always on). Read methods (`ListSharedResourceSubscriptions`,
+  `GetListing`) are **Data Access**, which is **off by default** — enable it first
+  ([how](https://docs.cloud.google.com/logging/docs/audit/configure-data-access)).
+- **Project.** Publisher events (publish/whitelist/revoke) are logged in the
+  **publisher** project. `SubscribeListing` is logged in the **subscriber**
+  project (that is where the call originates). For "who subscribed", the simplest
+  view is `manage_subscriptions.sh --list`.
+
+To query events in BigQuery, route them with a
+[log sink](https://docs.cloud.google.com/logging/docs/export/configure_export_v2)
+(one-time setup, publisher project):
+
+```bash
+# 1. Enable Data Access audit logs for analyticshub.googleapis.com (console:
+#    IAM & Admin -> Audit Logs), or via the project IAM policy auditConfigs.
+# 2. Create a dataset and a partitioned-table sink filtered to the service:
+bq --location=us-central1 mk --dataset "${PROJECT_ID}:sharing_audit"
+gcloud logging sinks create sharing_audit_sink \
+  "bigquery.googleapis.com/projects/${PROJECT_ID}/datasets/sharing_audit" \
+  --use-partitioned-tables \
+  --log-filter='protoPayload.serviceName="analyticshub.googleapis.com"'
+# 3. Grant the printed writer identity roles/bigquery.dataEditor on the dataset.
+```
+
+> New sink tables take a few minutes to appear on first write (Logging streams in
+> small batches).
+
+Then query the publisher governance events (publish, whitelist, revoke):
+
+```sql
+SELECT
+  timestamp,
+  protopayload_auditlog.authenticationInfo.principalEmail AS actor,
+  protopayload_auditlog.methodName AS method,
+  protopayload_auditlog.resourceName AS resource
+FROM `PROJECT.sharing_audit.cloudaudit_googleapis_com_activity`
+WHERE protopayload_auditlog.serviceName = 'analyticshub.googleapis.com'
+ORDER BY timestamp DESC;
+```
+
+For reads (e.g. who listed subscriptions), swap the table for
+`cloudaudit_googleapis_com_data_access` (requires Data Access logs enabled).
+
+- **Usage metrics:** the publisher's listing has a built-in
+  [usage-metrics dashboard](https://docs.cloud.google.com/bigquery/docs/analytics-hub-monitor-listings)
+  (consumption by subscriber, data volume) — no query needed.
 - **Fine-grained controls:** RLS/CLS applied upstream (see the `security` stage)
   continue to apply to subscribers querying the shared views.
 
 ## Screenshot checklist (for knowledge-sharing)
 
 1. Data Exchange + listing in the publisher's Analytics Hub.
-2. Listing IAM showing the whitelisted subscriber principal.
-3. (Optional) pending subscription request → approved (data-owner approval).
+2. Listing permissions showing the whitelisted subscriber principal (admission).
+3. Publisher's **Subscriptions** view for the listing (who subscribed) —
+   `manage_subscriptions.sh --list` or the console.
 4. Subscriber's Explorer showing the linked dataset (read-only).
 5. Sample query result + the job details showing it ran/billed in the subscriber
    project (cost isolation).
@@ -159,5 +230,7 @@ resources).
 - [Create and manage a data exchange](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-exchanges)
 - [Create and manage listings](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-listings)
 - [Subscribe to a listing](https://docs.cloud.google.com/bigquery/docs/analytics-hub-view-subscribe-listings)
-- [Manage subscriptions (approval)](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-subscriptions)
+- [Manage subscriptions (view/revoke)](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-subscriptions)
+- [Sharing audit logging](https://docs.cloud.google.com/bigquery/docs/analytics-hub-audit-logging)
+- [Monitor listings (usage metrics)](https://docs.cloud.google.com/bigquery/docs/analytics-hub-monitor-listings)
 - [Authorized datasets](https://docs.cloud.google.com/bigquery/docs/authorized-datasets)

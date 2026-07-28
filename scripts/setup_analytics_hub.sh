@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Thin wrapper around scripts/setup_analytics_hub.py (publisher / NIO hub side).
+# Thin wrapper around scripts/setup_analytics_hub.py (publisher / hub side).
 # Reads the Analytics Hub config from .env and publishes the curated share
 # dataset as a private Data Exchange listing, whitelisting the subscriber.
 #
@@ -19,7 +19,7 @@ REPO_ROOT="$(cd "${HERE}/.." && pwd)"
 : "${ANALYTICS_HUB_EXCHANGE:?set ANALYTICS_HUB_EXCHANGE}"
 : "${ANALYTICS_HUB_LISTING:?set ANALYTICS_HUB_LISTING}"
 : "${SUBSCRIBER_PRINCIPAL:?set SUBSCRIBER_PRINCIPAL}"
-: "${ANALYTICS_HUB_EXCHANGE_DISPLAY:=NIO Airport Operations Data Exchange}"
+: "${ANALYTICS_HUB_EXCHANGE_DISPLAY:=Partner Data Exchange}"
 : "${ANALYTICS_HUB_LISTING_DISPLAY:=Airport Operations - Curated Share}"
 
 exec uv run --project "${REPO_ROOT}" python "${HERE}/setup_analytics_hub.py" \

@@ -8,8 +8,8 @@ dependencies = [
     "google-cloud-pubsub>=2.39.0",
     # Parquet output for the baggage_events source (BigLake external table demo).
     "pyarrow>=15",
-    # NIO data-sharing showcase: BigQuery Analytics Hub (publish/subscribe) +
-    # dataset authorization for the curated share views.
+    # Hub-and-spoke data-sharing showcase: BigQuery Analytics Hub
+    # (publish/subscribe) + dataset authorization for the curated share views.
     "google-cloud-bigquery-analyticshub>=0.4.0",
     "google-cloud-bigquery>=3.11",
 ]
