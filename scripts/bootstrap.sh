@@ -89,14 +89,15 @@ echo ">> Enabling required APIs (no-op if already enabled)"
 # dataplex + cloudaicompanion (Gemini for Google Cloud) power the optional
 # data-insights script (scripts/generate_data_insights.sh). datalineage is
 # required for Managed Service for Apache Spark lineage emitted by the Spark
-# stored procedures.
+# stored procedures. analyticshub powers the optional data-sharing showcase
+# (scripts/setup_analytics_hub.sh); the subscriber project needs it too.
 gcloud services enable \
   bigquery.googleapis.com bigqueryconnection.googleapis.com \
   dataform.googleapis.com dataproc.googleapis.com \
   aiplatform.googleapis.com composer.googleapis.com \
   secretmanager.googleapis.com storage.googleapis.com \
   dataplex.googleapis.com datalineage.googleapis.com \
-  cloudaicompanion.googleapis.com \
+  cloudaicompanion.googleapis.com analyticshub.googleapis.com \
   pubsub.googleapis.com >/dev/null
 
 echo ">> Creating Dataform service account ${DATAFORM_SA}"

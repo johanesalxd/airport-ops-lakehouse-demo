@@ -198,8 +198,8 @@ airport-ops-lakehouse-demo/
 ## Prerequisites
 
 - A Google Cloud project with BigQuery, Dataform, Dataproc, Data Lineage, Vertex AI,
-  Composer, Secret Manager, and Cloud Storage APIs enabled (`bootstrap.sh`
-  enables them).
+  Composer, Secret Manager, Cloud Storage, and (for the optional data-sharing
+  showcase) Analytics Hub APIs enabled (`bootstrap.sh` enables them).
 - `gcloud` (with the `bq` CLI) authenticated (`gcloud auth application-default
   login`) with rights to create datasets, buckets, service accounts, and IAM
   bindings.
@@ -301,6 +301,9 @@ bash scripts/upload_demo_data.sh 3 42
 
 # 4b. (Optional) Publish the curated share dataset via Analytics Hub
 #     (hub-and-spoke) and subscribe from the spoke project. See docs/data-sharing.md
+#     The SUBSCRIBER project must also have analyticshub.googleapis.com enabled and
+#     the subscriber principal needs roles/analyticshub.subscriptionOwner +
+#     roles/bigquery.user in that project.
 bash scripts/setup_analytics_hub.sh          # publisher: exchange + listing + whitelist
 bash scripts/subscribe_analytics_hub.sh      # subscriber: linked dataset + cost-isolated query
 bash scripts/manage_subscriptions.sh --list  # publisher: who has subscribed (governance)
