@@ -1,4 +1,5 @@
 out/
+scratch/
 .env
 .env.*
 !.env.example

@@ -118,6 +118,7 @@ def create_exchange(
     location: str,
     exchange_id: str,
     display_name: str,
+    primary_contact: str,
 ) -> str:
     """Create a private Data Exchange (idempotent)."""
     parent = f"projects/{project_id}/locations/{location}"
@@ -129,7 +130,7 @@ def create_exchange(
                 "model: the publisher owns storage, subscribers pay their own "
                 "compute."
             ),
-            "primary_contact": "data-sharing-admin@example.com",
+            "primary_contact": primary_contact,
         }
     )
     print(f"Creating Data Exchange '{exchange_id}' in {parent}...")
@@ -157,6 +158,7 @@ def create_listing(
     publisher_project_id: str,
     share_dataset: str,
     display_name: str,
+    primary_contact: str,
 ) -> str:
     """Create a listing over the whole share dataset (idempotent)."""
     print(f"Creating listing '{listing_id}' over dataset '{share_dataset}'...")
@@ -167,7 +169,7 @@ def create_listing(
                 f"Curated airport operations data products ({share_dataset}) "
                 "shared with whitelisted subscribers."
             ),
-            primary_contact="data-sharing-admin@example.com",
+            primary_contact=primary_contact,
             bigquery_dataset=types.Listing.BigQueryDatasetSource(
                 dataset=f"projects/{publisher_project_id}/datasets/{share_dataset}"
             ),
@@ -246,6 +248,14 @@ def main() -> None:
         required=True,
         help="IAM principal to whitelist (user:/group:/serviceAccount:).",
     )
+    parser.add_argument(
+        "--primary-contact",
+        required=True,
+        help=(
+            "Contact email shown on the exchange and listing in the console. "
+            "Subscribers see this as the data owner to reach out to."
+        ),
+    )
     args = parser.parse_args()
 
     print("=" * 70)
@@ -257,6 +267,7 @@ def main() -> None:
     print(f"Location          : {args.location}")
     print(f"Exchange / Listing: {args.exchange_id} / {args.listing_id}")
     print(f"Subscriber        : {args.subscriber_principal}")
+    print(f"Primary contact   : {args.primary_contact}")
     print()
 
     try:
@@ -272,6 +283,7 @@ def main() -> None:
             args.location,
             args.exchange_id,
             args.exchange_display_name,
+            args.primary_contact,
         )
         listing_name = create_listing(
             client,
@@ -280,6 +292,7 @@ def main() -> None:
             args.publisher_project_id,
             args.share_dataset,
             args.listing_display_name,
+            args.primary_contact,
         )
         grant_subscriber(client, listing_name, args.subscriber_principal)
 

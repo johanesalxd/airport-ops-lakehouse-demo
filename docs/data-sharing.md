@@ -61,8 +61,11 @@ the DCR variant.
   the shared datasets** (here `us-central1`), not the `US` multi-region. This is
   set by `AH_LOCATION` in `.env`.
 - Config in `.env` (see `.env.example`): `DS_SHARE`, `AH_LOCATION`,
-  `ANALYTICS_HUB_EXCHANGE`, `ANALYTICS_HUB_LISTING`, `SUBSCRIBER_PROJECT`,
-  `SUBSCRIBER_PRINCIPAL`, `SUBSCRIBER_LINKED_DATASET`.
+  `ANALYTICS_HUB_EXCHANGE`, `ANALYTICS_HUB_LISTING`, `AH_PRIMARY_CONTACT`,
+  `SUBSCRIBER_PROJECT`, `SUBSCRIBER_PRINCIPAL`, `SUBSCRIBER_LINKED_DATASET`.
+  `AH_PRIMARY_CONTACT` is shown to subscribers in the console as the data owner
+  to contact, and is where "Request access" submissions land — use a monitored
+  group, not an individual.
 - `bigqueryanalyticshub.googleapis.com` enabled in both projects.
 
 ### IAM
@@ -108,9 +111,7 @@ isolation. Use `--skip-query` to only subscribe.
 
 ### Data-owner approval & governance
 
-A **private** listing has no separate pending/approve queue — that "Request
-access → approve" flow is a **commercial/Marketplace** listing feature. For a
-private exchange, the data owner governs access in three steps:
+For a **private** listing, the data owner governs access in three steps:
 
 1. **Admission** — granting `roles/analyticshub.subscriber` on the listing (done
    by `setup_analytics_hub.sh`). *This grant is the approval decision:* only
@@ -129,10 +130,50 @@ private exchange, the data owner governs access in three steps:
      --revoke projects/SUBSCRIBER_NUMBER/locations/us-central1/subscriptions/SUB_ID
    ```
 
-   (Use the subscription name printed by `--list`.)
+   (Use the subscription name printed by `--list`.) A revoked subscription stays
+   listed with `STATE_INACTIVE` — the audit trail is retained, the access is not.
 
 In the console the same surface is **Analytics Hub → listing → set permissions**
 (admission) and **→ listing → Subscriptions** (view/revoke).
+
+#### Which approval model do you actually get?
+
+"Approval" means different things depending on the listing type. There are three
+distinct models, and they can coexist on the same listing.
+
+| Model | Consumer experience | Owner's approval action | When to use |
+|---|---|---|---|
+| **Private listing** (this showcase) | Owner sends them the listing URL; **Subscribe** is available immediately | Grant `roles/analyticshub.subscriber` on the listing, out of band | Known partners, contracts already in place |
+| **Request access** | Consumer can *see* the listing but not subscribe, so the console shows **Request access** and a request form that goes to the listing's `primaryContact` | Grant `roles/analyticshub.subscriber` in response to the request | Self-service discovery, owner still gates every grant |
+| **Marketplace-integrated** | **Purchase via Marketplace** → order → access granted on order activation | Onboard the product once in the Producer Portal; per-order approval is automatic | Commercial data products, entitlement tied to billing |
+
+Three things follow from this that are easy to get wrong:
+
+- **There is no in-console "pending approvals" queue with an Approve button.** In
+  the first two models the IAM grant *is* the approval; rejection is simply not
+  granting. Only the Marketplace model has an order lifecycle.
+- **"Request access" needs the consumer to be able to see the listing.** Grant
+  `roles/analyticshub.viewer` (on the exchange) for that, and set a monitored
+  `AH_PRIMARY_CONTACT` — that address receives the request. Making a listing
+  broadly discoverable otherwise requires
+  [making the data exchange public](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-exchanges#make-data-exchange-public).
+- **You are not locked in.** Per the
+  [Marketplace docs](https://docs.cloud.google.com/bigquery/docs/analytics-hub-cloud-marketplace),
+  requesting-access and Marketplace flows are *both* supported on a single
+  listing, and you can add Marketplace integration to an existing listing
+  "without any disruptions to existing subscriptions." Start private, add
+  commercial later.
+
+If you need a genuine approval **workflow** — ticket, reviewer, SLA, audit of the
+decision itself — build it in front of the IAM grant. The
+`manage_subscriptions.py` script shows the exact API surface such a portal calls
+(`listSubscriptions`, `revokeSubscription`); admission is a `setIamPolicy` on the
+listing. Analytics Hub deliberately owns entitlement, not workflow.
+
+Marketplace-integrated listings also carry limitations worth knowing before you
+commit: data clean rooms and Pub/Sub topics are not supported, billing usage
+metrics do not appear in `INFORMATION_SCHEMA`, and both parties must be in a
+supported Cloud Marketplace Agency Jurisdiction.
 
 ## Governance & monitoring
 
@@ -231,6 +272,9 @@ resources).
 - [Create and manage listings](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-listings)
 - [Subscribe to a listing](https://docs.cloud.google.com/bigquery/docs/analytics-hub-view-subscribe-listings)
 - [Manage subscriptions (view/revoke)](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-subscriptions)
+- [Commercialize listings on Cloud Marketplace](https://docs.cloud.google.com/bigquery/docs/analytics-hub-cloud-marketplace)
+- [Analytics Hub IAM roles](https://docs.cloud.google.com/iam/docs/roles-permissions/analyticshub)
+- [VPC Service Controls rules for Analytics Hub](https://docs.cloud.google.com/bigquery/docs/analytics-hub-vpc-sc-rules)
 - [Sharing audit logging](https://docs.cloud.google.com/bigquery/docs/analytics-hub-audit-logging)
 - [Monitor listings (usage metrics)](https://docs.cloud.google.com/bigquery/docs/analytics-hub-monitor-listings)
 - [Authorized datasets](https://docs.cloud.google.com/bigquery/docs/authorized-datasets)

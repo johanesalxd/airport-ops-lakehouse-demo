@@ -291,6 +291,7 @@ compile_repo
   → semantic    (roll-up views)
   → quality     (assertions + data-quality summary)
   → security    (RLS + CLS governance showcase: self-contained staff_directory)
+  → share       (curated shr_* views in airport_share, published via Analytics Hub)
   → publish_run_summary   (BigQuery query over sem_airport_operations_daily)
 ```
 

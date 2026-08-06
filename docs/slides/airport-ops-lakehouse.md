@@ -84,7 +84,8 @@ style: |
 | 3 | Why Dataform, not "just Python" | The Dataform compiled graph |
 | 4 | Native `JSON` + Gemini enrichment | Bronze JSON view + enriched feedback |
 | 5 | Governance: assertions + **RLS / CLS** | DQ summary + masked-vs-raw by identity |
-| 6 | What's next (roadmap) | Lineage in Dataplex |
+| 6 | **Sharing: hub-and-spoke** beyond one BI tool | Analytics Hub publish → subscribe → cost isolation |
+| 7 | What's next (roadmap) | Lineage in Dataplex |
 
 <span class="small">The deck teaches the *why*; the console shows it actually running.</span>
 
@@ -135,7 +136,7 @@ style: |
 ![diagram w:1120](assets/dag-stages.svg)
 
 - One Composer DAG; each stage = a Dataform tag = a **medallion layer**.
-- Setup → ingestion → bronze → silver → gold → semantic → quality → security.
+- Setup → ingestion → bronze → silver → gold → semantic → quality → security → share.
 
 <span class="live">LIVE</span> &nbsp; Trigger `airport_ops_lakehouse` and watch the stages go green in order.
 
@@ -332,6 +333,75 @@ Same query, same table — **the result depends on who's asking.** All declared 
 
 ---
 
+## Sharing beyond one BI tool: hub-and-spoke
+
+**The hub owns storage. The spokes pay compute.**
+
+```
+Publisher HUB (owns storage)            Subscriber SPOKE (pays compute)
+  airport_gold ─┐                         linked dataset (read-only)
+  airport_semantic ─┤ authorized dataset      │
+                    ▼                          ▼
+             airport_share (shr_* views)  queries billed to the
+                    │                       subscriber project
+                    ▼  Analytics Hub
+             private Data Exchange ── listing ──► subscribe ──► linked dataset
+```
+
+- The `share` stage publishes **curated products**, not base tables.
+- `airport_share` is an **authorized dataset** — the views resolve without giving
+  subscribers any access to gold/semantic underneath.
+- **Zero copy.** The linked dataset is a pointer; storage is billed once.
+
+<span class="small">Adding the second, third, tenth spoke is the same two commands. That is what makes it a platform rather than a one-off share.</span>
+
+---
+
+## Publisher → subscriber, and where the cost lands
+
+<div class="cols">
+<div class="pill">
+
+**Publisher (hub admin)**
+- Create private **Data Exchange**
+- Publish **listing** over the share dataset
+- Whitelist partner **on the listing**
+- `setup_analytics_hub.sh`
+
+</div>
+<div class="pill">
+
+**Subscriber (spoke)**
+- **Subscribe** → linked dataset appears
+- Query it like any other dataset
+- Job runs in **their** project
+- `subscribe_analytics_hub.sh`
+
+</div>
+</div>
+
+⚠️ Never grant `roles/analyticshub.subscriber` at the **project** level — that lets a consumer subscribe to *every* listing. Grant it **per listing**.
+
+<span class="live">LIVE</span> &nbsp; Subscribe from the spoke, then `INFORMATION_SCHEMA.JOBS_BY_PROJECT` **in the subscriber project** — the job is in their history, not yours.
+
+---
+
+## Who approves? Three models, one listing
+
+| Model | Consumer sees | Owner's approval action |
+|---|---|---|
+| **Private listing** | **Subscribe** | Grant `analyticshub.subscriber` on the listing |
+| **Request access** | **Request access** form → `primaryContact` | Grant the role in response |
+| **Marketplace** | **Purchase via Marketplace** | Automatic on order activation |
+
+- There is **no in-console pending-approval queue**. In the first two models the **IAM grant *is* the approval**.
+- Need a real workflow (ticket, reviewer, SLA)? Build it **in front of** the grant — the API surface is `setIamPolicy`, `listSubscriptions`, `revokeSubscription`.
+- **Not locked in:** request-access and Marketplace flows coexist on the *same* listing; you can commercialize later without disrupting existing subscriptions.
+
+<span class="small">Governance surface: per-listing admission · `--list` visibility · revoke (retained as `STATE_INACTIVE`) · Cloud Audit Logs · built-in usage metrics · upstream RLS/CLS still applies.</span>
+
+---
+
 ## What's covered vs. what's next
 
 <div class="cols">
@@ -347,6 +417,7 @@ Same query, same table — **the result depends on who's asking.** All declared 
 - RLS + CLS / masking (governance stage)
 - Optional Pub/Sub baggage stream
 - Composer orchestration + lineage
+- **Analytics Hub hub-and-spoke sharing**
 
 </div>
 <div class="pill">
@@ -357,13 +428,13 @@ Same query, same table — **the result depends on who's asking.** All declared 
 - Conversational analytics / data agents
 - Vector search & embeddings
 - Iceberg open table format
-- Analytics Hub sharing
+- Data clean rooms (DCR) + Marketplace listings
 - Dataform CI/CD environments
 
 </div>
 </div>
 
-<span class="small">Vs. Google Cloud's lakehouse reference pattern, the optional Pub/Sub stream and governance (RLS/CLS) are now covered; the BI layer, continuous queries, and conversational analytics remain on the roadmap.</span>
+<span class="small">Vs. Google Cloud's lakehouse reference pattern, the optional Pub/Sub stream, governance (RLS/CLS) and cross-organization sharing are now covered; the BI layer, continuous queries, and conversational analytics remain on the roadmap.</span>
 
 ---
 

@@ -24,17 +24,26 @@ flowchart LR
     V3["sem_passenger_experience"]
   end
 
+  subgraph SHARE["Sharing — hub-and-spoke (Analytics Hub)"]
+    direction LR
+    SHR["airport_share<br/>shr_* curated views"] --> AH["private Data Exchange<br/>+ listing"] --> SPOKE["Subscriber project<br/>linked dataset · pays own compute"]
+  end
+
   SRC --> GCS --> DF
   SP["Serverless Spark<br/>stored procs"] -. "messy/compressed" .-> DF
   EXT["External tables<br/>BigLake Parquet · plain JSON-column"] -. external .-> DF
   GEM["Gemini remote model<br/>AI.GENERATE_TEXT"] -. enrich .-> SLV
   GOLD --> SEM
   GOLD --> QA["assertions +<br/>data-quality summary"]
+  SEM --> SHR
+  GOLD -. "authorized dataset" .-> SHR
   COMP["Cloud Composer (Airflow)"] -. "compiles + invokes by stage" .-> DF
 
   classDef store fill:#fff5e6,stroke:#e0a64d,color:#5c4316;
   classDef ai fill:#f0e9ff,stroke:#9a6dfe,color:#3d2a7a;
   classDef orch fill:#e8f7ee,stroke:#46b06e,color:#1f5e38;
+  classDef share fill:#fff3e0,stroke:#e08a2e,color:#7a4a10;
   class GCS,SP store;
   class GEM ai;
   class COMP orch;
+  class SHR,AH,SPOKE share;

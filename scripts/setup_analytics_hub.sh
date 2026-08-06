@@ -19,6 +19,7 @@ REPO_ROOT="$(cd "${HERE}/.." && pwd)"
 : "${ANALYTICS_HUB_EXCHANGE:?set ANALYTICS_HUB_EXCHANGE}"
 : "${ANALYTICS_HUB_LISTING:?set ANALYTICS_HUB_LISTING}"
 : "${SUBSCRIBER_PRINCIPAL:?set SUBSCRIBER_PRINCIPAL}"
+: "${AH_PRIMARY_CONTACT:?set AH_PRIMARY_CONTACT (shown to subscribers in the console)}"
 : "${ANALYTICS_HUB_EXCHANGE_DISPLAY:=Partner Data Exchange}"
 : "${ANALYTICS_HUB_LISTING_DISPLAY:=Airport Operations - Curated Share}"
 
@@ -31,4 +32,5 @@ exec uv run --project "${REPO_ROOT}" python "${HERE}/setup_analytics_hub.py" \
   --exchange-display-name "${ANALYTICS_HUB_EXCHANGE_DISPLAY}" \
   --listing-id "${ANALYTICS_HUB_LISTING}" \
   --listing-display-name "${ANALYTICS_HUB_LISTING_DISPLAY}" \
-  --subscriber-principal "${SUBSCRIBER_PRINCIPAL}"
+  --subscriber-principal "${SUBSCRIBER_PRINCIPAL}" \
+  --primary-contact "${AH_PRIMARY_CONTACT}"

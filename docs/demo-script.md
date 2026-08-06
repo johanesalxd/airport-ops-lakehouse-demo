@@ -22,13 +22,22 @@ RLS/CLS stage (`bq-rls-cls-dataform-admin@…`, `bq-rls-cls-dataform-sales@…` 
     masked columns in §7c). Needed for the RLS/CLS reveal.
 - **Tabs to pre-open:** Composer Airflow UI (`dev-airflow` → DAG
   `airport_ops_lakehouse`), BigQuery Studio, the BigQuery **Dataform** repo page,
-  and the slide deck (PDF).
-- **Project context:** console / `bq` set to your `PROJECT_ID`. Paste the §6–§7c
-  queries into a scratch BigQuery tab ahead of time.
+  the **Sharing (Analytics Hub)** page (exchange → listing), and the slide deck
+  (PDF).
+- **A third window signed in as the subscriber**, with the console project set to
+  `SUBSCRIBER_PROJECT` — needed for §7d to show the linked dataset and the
+  cost-isolated query landing in the *subscriber's* job history.
+- **Project context:** console / `bq` set to your `PROJECT_ID`. Paste the §6–§7d
+  queries into a scratch BigQuery tab ahead of time (see
+  `scratch/demo-queries.sql`, which has the project IDs already substituted).
 - **Confirm the latest run is green:** open the most recent
-  `airport_ops_lakehouse` run grid — all 10 tasks green. You will **reuse** this
+  `airport_ops_lakehouse` run grid — all 11 tasks green. You will **reuse** this
   run (not re-trigger) so the built tables are already populated.
-- **Sanity check** one query returns rows (e.g. `sem_airport_operations_daily`).
+- **Sanity check** one query returns rows (e.g. `sem_airport_operations_daily`)
+  and one *subscriber-side* query returns rows from the linked dataset.
+- **Do NOT run `scripts/teardown.sh`** between rehearsal and the live session — it
+  deletes the audit-log sink and dataset that §7d step 5 depends on, and new sink
+  tables take minutes to reappear.
 
 ## 0. One-time seed (before the session)
 
@@ -85,7 +94,7 @@ is called from Dataform for the non-SQL work."
 - Open the Composer **`dev-airflow`** Airflow UI → DAG `airport_ops_lakehouse`.
 - **Reuse the latest green run** (recommended for the live session): open its grid
   and walk the stages `compile_repo → setup → ingestion → bronze → silver → gold →
-  semantic → quality → security → publish_run_summary`. Only **trigger** a fresh
+  semantic → quality → security → share → publish_run_summary`. Only **trigger** a fresh
   run if you specifically want to show it execute (~8 min end-to-end). The
   medallion layers are stages — point that out.
 - While it runs, open the **Dataform** page in the console → the repository →
@@ -207,51 +216,164 @@ No views, no copies, all declared in Dataform alongside the transformations."*
 > If the sales view still shows all rows/raw values, the data-policy IAM may need
 > a minute to propagate after the run — re-run the query.
 
-## 7d. (Optional) Data sharing: Analytics Hub hub-and-spoke (5 min) — live
+## 7d. Data sharing: Analytics Hub hub-and-spoke (45–60 min) — live
 
-The deep-dive agenda in one line: **hub owns storage, spokes pay compute.** Full
-runbook: [`data-sharing.md`](data-sharing.md).
+The whole model in one line: **the hub owns storage, the spokes pay compute.**
+Full runbook: [`data-sharing.md`](data-sharing.md).
 
-1. **Architecture alignment** — the `share` stage built curated `shr_*`
-   authorized views in `airport_share` over gold/semantic (subscribers get
-   products, not base tables).
-2. **Publisher workflow (hub admin)** — create the private exchange +
-   listing and whitelist the subscriber:
+This section is structured in four parts. Each stands alone, so you can go deep
+on whichever the audience cares about and skim the rest.
 
-   ```bash
-   source .env && bash scripts/setup_analytics_hub.sh
+### 7d.1 Architecture alignment (10 min)
+
+Draw or show the hub-and-spoke picture before touching a console:
+
+```
+Publisher HUB (owns storage)            Subscriber SPOKE (pays compute)
+  airport_gold ─┐                         linked dataset (read-only)
+  airport_semantic ─┤ authorized dataset      │
+                    ▼                          ▼
+             airport_share (shr_* views)  queries billed to the
+                    │                       subscriber project
+                    ▼  Analytics Hub
+             private Data Exchange ── listing ──► subscribe ──► linked dataset
+```
+
+Points to land:
+
+- The `share` stage built curated `shr_*` views in `airport_share` over
+  gold/semantic. Subscribers get **products, not base tables**.
+- `airport_share` is an **authorized dataset** on `airport_gold` and
+  `airport_semantic`, so the views resolve for subscribers *without* granting
+  them any access to the underlying tables. Show this in the dataset's
+  **Sharing → Authorized datasets** panel.
+- **Zero copy.** The subscriber's linked dataset is a pointer. Storage is billed
+  once, to the publisher; nothing is replicated or exported.
+- **One publisher project, N subscriber projects.** Adding the second, third, and
+  tenth spoke is the same two commands — this is the part that scales.
+
+> **Simplification to call out:** this demo puts the exchange in the *same*
+> project as the storage. At scale, separate them — a storage project holding the
+> curated datasets and a governance project holding the exchange and listings.
+> That keeps entitlement administration away from data administration.
+
+### 7d.2 Publisher experience — the admin workflow (10 min)
+
+Create the private exchange + listing and whitelist the subscriber:
+
+```bash
+source .env && bash scripts/setup_analytics_hub.sh
+```
+
+The script is idempotent, so it is safe to run live even though the resources
+already exist — it will report `already exists` and move on.
+
+Then show, in the **Sharing (Analytics Hub)** console:
+
+1. The **data exchange** — note `Private` discovery type.
+2. The **listing** over `airport_share`, and its `primaryContact`.
+3. **Set permissions** on the listing → the whitelisted subscriber principal
+   holding `roles/analyticshub.subscriber`.
+
+> ⚠️ **The isolation pitfall worth stating out loud:** never grant
+> `roles/analyticshub.subscriber` at the *project* level. That lets a consumer
+> subscribe to *every* listing in the project. Grant it **per listing**, as the
+> script does. This is the single most common mistake in a hub-and-spoke rollout.
+
+### 7d.3 Subscriber onboarding & cost isolation (10 min)
+
+Switch to the **subscriber window**. From the spoke, link the dataset and run a
+cost-isolated query:
+
+```bash
+source .env && bash scripts/subscribe_analytics_hub.sh
+```
+
+Then show, in the subscriber's console:
+
+1. The **linked dataset** in Explorer — read-only, no copy.
+2. A query against `shr_airport_operations_daily` returning rows.
+3. **The punchline — where the cost landed.** Run this *in the subscriber
+   project*; it proves compute was billed to the spoke, not the hub:
+
+   ```sql
+   SELECT
+     job_id,
+     user_email,
+     total_bytes_billed,
+     creation_time
+   FROM `region-us-central1`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+   WHERE creation_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)
+     AND state = 'DONE'
+   ORDER BY creation_time DESC;
    ```
 
-   Show, in Analytics Hub: the data exchange, the listing over `airport_share`,
-   and the subscriber whitelisted **on the listing** (not project-wide).
-3. **Subscriber onboarding (spoke)** — from the subscriber project, link the
-   dataset and run a **cost-isolated** query:
+> Do not lean on the `total_bytes_billed` printed by the subscribe script — these
+> views are tiny, so it will often read `0` (under the 10 MB minimum, or cached).
+> `JOBS_BY_PROJECT` in the subscriber project is the artifact that actually makes
+> the point: the job **exists in their project's history, not yours**.
 
-   ```bash
-   source .env && bash scripts/subscribe_analytics_hub.sh
-   ```
+### 7d.4 Governance, approval & monitoring (15 min)
 
-   Point out the job ran in the **subscriber** project (`total_bytes_billed`
-   there) — storage stayed with the publisher.
-4. **Data-owner governance** — from the hub, show who subscribed (and how you'd
-   revoke access):
+**Who has access, and how do you take it away.** From the hub:
 
-   ```bash
-   source .env && bash scripts/manage_subscriptions.sh --list
-   ```
+```bash
+source .env && bash scripts/manage_subscriptions.sh --list
+```
 
-5. **Governance & monitoring** — upstream RLS/CLS still applies to the shared
-   views; Analytics Hub/BigQuery audit logs show who subscribed and queried.
+You will see one `STATE_ACTIVE` subscription and one `STATE_INACTIVE` — the
+inactive one is a previously revoked subscription. That is the revocation
+workflow, and the record is deliberately retained for audit.
 
-Say: *"The hub publishes once; each subscriber (Partner A, Partner B, …)
-subscribes into its own project and pays for its own queries. You keep the data
-and the governance; they get a live, read-only product — no copies, no egress of
-raw rows."*
+**Approval models.** Expect the question *"where is the UI for the data owner to
+approve a request?"* The honest answer has three parts — see the table in
+[`data-sharing.md`](data-sharing.md#which-approval-model-do-you-actually-get):
 
-> Data-owner approval for a **private** listing is the per-listing subscriber
-> grant (step 2 = the approval decision) plus list/revoke governance (step 4);
-> there is no separate pending/approve queue. The "Request access → approve" flow
-> is a **commercial/Marketplace** listing feature, not this private-exchange path.
+| Model | Consumer sees | Owner's approval action |
+|---|---|---|
+| Private listing (this demo) | **Subscribe** | Grant `analyticshub.subscriber` on the listing |
+| Request access | **Request access** form → `primaryContact` | Grant `analyticshub.subscriber` in response |
+| Marketplace-integrated | **Purchase via Marketplace** | Automatic on order activation |
+
+The framing: **there is no in-console pending-approval queue with an Approve
+button.** In the first two models the IAM grant *is* the approval. If you need a
+real workflow — ticket, reviewer, SLA — build it in front of the grant; the
+scripts here show the exact API surface (`setIamPolicy`, `listSubscriptions`,
+`revokeSubscription`) that such a portal would call. And you are not locked in:
+requesting-access and Marketplace flows are supported on the *same* listing, so a
+private listing can gain a commercial flow later without disrupting existing
+subscriptions.
+
+**Audit logging.** Analytics Hub emits Cloud Audit Logs under
+`analyticshub.googleapis.com`, routed here to BigQuery via a log sink:
+
+```sql
+SELECT
+  timestamp,
+  protopayload_auditlog.authenticationInfo.principalEmail AS actor,
+  protopayload_auditlog.methodName AS method,
+  protopayload_auditlog.resourceName AS resource
+FROM `PROJECT.sharing_audit.cloudaudit_googleapis_com_activity`
+WHERE protopayload_auditlog.serviceName = 'analyticshub.googleapis.com'
+ORDER BY timestamp DESC;
+```
+
+Point out: publish/whitelist/revoke are **Admin Activity** (always on) and land in
+the *publisher* project; `SubscribeListing` is logged in the *subscriber* project;
+read methods are **Data Access** and are off by default.
+
+**Also mention:** the listing has a built-in
+[usage-metrics dashboard](https://docs.cloud.google.com/bigquery/docs/analytics-hub-monitor-listings)
+(consumption per subscriber), and upstream **RLS/CLS from the `security` stage
+still applies** to subscribers querying the shared views — fine-grained control
+survives the sharing boundary.
+
+### Closing line for this section
+
+Say: *"The hub publishes once; each subscriber subscribes into its own project and
+pays for its own queries. You keep the data and the governance; they get a live,
+read-only product — no copies, no egress of raw rows. Adding the next partner is
+the same two commands."*
 
 ## 8. Close (2 min) — concept
 
