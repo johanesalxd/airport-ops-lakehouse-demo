@@ -140,6 +140,16 @@ Confirm with **`Create Exchange`**, then either fill the inline
 > cannot be edited — the only way to turn it off is to delete the data exchange
 > and recreate it. Decide before you save.
 
+The toggle is narrower than its name suggests, and the distinction is worth
+knowing before you agonise over it. With it **off**, the publisher still sees
+**who subscribed** — `Manage subscriptions` reports each subscription's
+`subscriberContact`. What is withheld is **who ran each individual query**.
+
+So off means: *"I know which parties hold access; I do not track which of their
+employees queried what."* For most partner-sharing arrangements that is the
+defensible position, and it is usually the one a privacy or legal reviewer will
+prefer. Turn it on only when per-user attribution is a stated requirement.
+
 ### Publisher — create the listing
 
 Exchange → **`Create listing`**

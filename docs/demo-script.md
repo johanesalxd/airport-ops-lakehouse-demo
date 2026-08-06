@@ -305,6 +305,13 @@ if someone asks "how would we reproduce this ourselves?"
 
 Switch to the **subscriber window**. Again, console first.
 
+**Sign in as the subscriber, not as yourself.** This section is worth far more
+performed by a second identity that holds only `Analytics Hub Subscriber` on the
+listing and rights in its *own* project. Everything below then happens as the
+partner, and the cost evidence at the end carries their email rather than yours.
+If you run it as the publisher, say so — an audience that spots one identity
+doing both halves will discount the isolation claim.
+
 **How a subscriber finds a private listing.** In the subscriber's
 `Sharing (Analytics Hub)` → **`Search listings`** → Filters → `Listings` →
 **`Private`**. Worth stating: private listings are not broadly browsable — the
@@ -315,6 +322,10 @@ data.
 **Subscribing.** Click the listing → **`Subscribe`** → the
 **`Create linked dataset`** dialog asks for `Project` and
 `Linked dataset name` → **`Save`**.
+
+> Check the `Project` field before saving. It defaults to whatever project the
+> console is currently in, and landing the linked dataset in the publisher's
+> project quietly destroys the entire point of this section.
 
 The equivalent, for the tenth partner:
 
@@ -341,6 +352,11 @@ Then show, in the subscriber's console:
      AND state = 'DONE'
    ORDER BY creation_time DESC;
    ```
+
+   Two columns carry the argument. `user_email` is the subscriber's identity, and
+   the rows exist **in the subscriber's project history at all** — the publisher's
+   `JOBS_BY_PROJECT` has no record of this query. Say it plainly: *"the hub never
+   saw this job, and the hub is not paying for it."*
 
 > Do not lean on the `total_bytes_billed` printed by the subscribe script — these
 > views are tiny, so it will often read `0` (under the 10 MB minimum, or cached).
