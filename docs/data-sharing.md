@@ -109,6 +109,148 @@ This subscribes from `SUBSCRIBER_PROJECT`, creating the read-only linked dataset
 project** and prints the job's project + bytes billed — demonstrating cost
 isolation. Use `--skip-query` to only subscribe.
 
+## Doing the same thing in the console
+
+The scripts exist so this is repeatable for the tenth partner. Everything they do
+is also available in the Google Cloud console, which is usually what you want
+when walking someone through the model for the first time.
+
+The console page is **`Sharing (Analytics Hub)`**. Product docs now call the
+service "BigQuery sharing (formerly Analytics Hub)"; the console label still
+carries both names.
+
+### Publisher — create the exchange
+
+`Sharing (Analytics Hub)` → **`Create exchange`**
+
+| Field | Notes |
+|---|---|
+| `Project`, `Region` | **Immutable** after creation. Region must match the shared dataset. |
+| `Display name` | The only required field. |
+| `Primary contact` | Email **or** URL. |
+| `Description` | Free text. |
+| `Subscriber Email Logging` (toggle) | Logs *which individual* ran each query, surfaced in `INFORMATION_SCHEMA.SHARED_DATASET_USAGE.job_principal_subject`. |
+| `Public Discoverability` (toggle) | Leave off for a private exchange. |
+
+Confirm with **`Create Exchange`**, then either fill the inline
+`Exchange Permissions` block (`Administrators` / `Publishers` / `Subscribers` /
+`Viewers`) and click **`Set permissions`**, or click **`Skip`**.
+
+> ⚠️ **`Subscriber Email Logging` is a one-way door.** Once enabled and saved it
+> cannot be edited — the only way to turn it off is to delete the data exchange
+> and recreate it. Decide before you save.
+
+### Publisher — create the listing
+
+Exchange → **`Create listing`**
+
+1. **`Configure data`** — `Resource type` (`BigQuery dataset` / `Pub/Sub Topic`),
+   then `Shared dataset` (**immutable** after creation),
+   `Allow stored procedure sharing` (Preview), `Region data availability`
+   (regions show as `Ready to use`, `Unavailable`, or `Provider primary`), and
+   **`Data Egress controls`**:
+   - `Disable copy and export of shared data`
+   - `Disable copy and export of query results` (also selects the first)
+   - `Disable copy and export of tables through APIs` (also selects the first)
+2. **`Listing details`** — `Display name` (required), plus optional `Category`
+   (up to two), `Data affinity`, `Icon` (PNG/JPEG, <512 KiB, ≤512×512),
+   `Description`, `Public discoverability`, `Subscriber Email Logging`, and
+   **`Documentation > Markdown`**.
+3. **`Listing contact information`** — `Primary contact`,
+   **`Request access contact`**, `Provider` (`Provider name`,
+   `Provider primary contact`), `Publisher` (`Publisher name`,
+   `Publisher primary contact`). All optional.
+4. Review **`Listing preview`**, then **`Publish`**.
+
+> `Documentation > Markdown` is worth filling in properly — it renders on the
+> listing page and is the closest thing to a published data contract. A listing
+> with a column dictionary and a refresh statement reads like a product; one
+> without reads like a leftover dataset.
+
+**Alternate entry point:** BigQuery → click a dataset → **`Sharing`** >
+**`Publish as listing`**. Useful when the audience thinks dataset-first.
+
+### Publisher — whitelist a partner
+
+Exchange → listing → **`Set permissions`** → **`Add principal`** →
+`New principals` → `Select a role` → point to **`Analytics Hub`** → choose:
+
+| Role in the UI | Effect |
+|---|---|
+| **`Analytics Hub Subscriber`** | Can subscribe. Use for a private listing. |
+| **`Analytics Hub Viewer`** | Can *see* the listing but not subscribe — this is what drives the `Request access` path. |
+
+Then **`Save`**.
+
+Private listings are not browsable by default. To hand one to a partner, send
+them the **listing URL**; making it discoverable instead requires making the data
+exchange public.
+
+### Subscriber — discover and subscribe
+
+`Sharing (Analytics Hub)` → **`Search listings`** → Filters → `Listings` →
+**`Private`** (you can also filter by `Categories`, `Location`, `Provider`) →
+click the listing → **`Subscribe`** → the **`Create linked dataset`** dialog asks
+for `Project` and `Linked dataset name` → **`Save`**.
+
+The linked dataset then appears in the subscriber's BigQuery **`Explorer`** pane
+**with a different icon** from a normal dataset — a small but useful visual cue
+that it is a pointer, not a copy.
+
+### Publisher — subscriptions and revocation
+
+Exchange → listing → **`Manage subscriptions`** (also reachable from BigQuery →
+shared dataset → **`Sharing`** > `Manage subscriptions`). Results can be filtered
+by subscriber.
+
+To revoke: **`Subscriptions`** → tick the subscriptions → **`Remove Subscriptions`**
+→ in the **`Remove subscription?`** dialog type `remove` → **`Remove`**.
+
+A revoked subscription remains listed as `STATE_INACTIVE`. Access is gone; the
+record is kept.
+
+### Publisher — usage metrics
+
+Exchange → **`Usage metrics`** tab → select a listing and a time range. Shows
+Total Subscriptions, Total Subscribers, Total jobs executed, Total bytes scanned,
+a Daily Subscriptions chart, **Subscribers per organization**, Daily Executed
+Jobs, and Tables' job frequency. No query required.
+
+### Console-only affordances worth knowing
+
+- **`Listing preview`** — renders the listing card as you fill the form. No API
+  equivalent.
+- **`Copy share link`** (exchange, under **`More options`**) — the documented
+  workaround when a publisher is in a *different organization* and therefore
+  cannot see your exchange.
+- **`Copy public link`** (listing) — unauthenticated URL, for public listings
+  granted `allUsers` the Viewer role.
+- **`Publish as listing`** from a dataset.
+- Bulk subscription removal via checkboxes.
+
+And the inverse — **API-only**, not exposed in the console: `icon` and
+`documentation` on a **data exchange** can be set via
+`dataExchanges.patch`, but the `Create exchange` / `Edit exchange` dialogs only
+offer `Display name`, `Primary contact`, `Description`, `Public discoverability`
+and `Subscriber Email Logging`.
+
+### Console click-path reference
+
+| Task | Documentation |
+|---|---|
+| Create a data exchange | [manage-exchanges#create-exchange](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-exchanges#create-exchange) |
+| Make an exchange public | [manage-exchanges#make-data-exchange-public](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-exchanges#make-data-exchange-public) |
+| Update an exchange | [manage-exchanges#update-exchange](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-exchanges#update-exchange) |
+| Create a listing | [manage-listings#create_a_listing](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-listings#create_a_listing) |
+| Give users access to a listing | [manage-listings#give_users_access_to_a_listing](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-listings#give_users_access_to_a_listing) |
+| Delegate listing administration | [manage-listings#create-listing-administrator](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-listings#create-listing-administrator) |
+| View all subscriptions | [manage-listings#view_all_subscriptions](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-listings#view_all_subscriptions) |
+| Remove a subscription | [manage-listings#remove_a_subscription](https://docs.cloud.google.com/bigquery/docs/analytics-hub-manage-listings#remove_a_subscription) |
+| Discover and subscribe | [view-subscribe-listings](https://docs.cloud.google.com/bigquery/docs/analytics-hub-view-subscribe-listings) |
+| Usage metrics | [monitor-listings](https://docs.cloud.google.com/bigquery/docs/analytics-hub-monitor-listings) |
+| Commercial / Marketplace | [cloud-marketplace](https://docs.cloud.google.com/bigquery/docs/analytics-hub-cloud-marketplace) |
+| Audit logging | [audit-logging](https://docs.cloud.google.com/bigquery/docs/analytics-hub-audit-logging) |
+
 ### Data-owner approval & governance
 
 For a **private** listing, the data owner governs access in three steps:
@@ -250,14 +392,45 @@ For reads (e.g. who listed subscriptions), swap the table for
 
 ## Screenshot checklist (for knowledge-sharing)
 
-1. Data Exchange + listing in the publisher's Analytics Hub.
-2. Listing permissions showing the whitelisted subscriber principal (admission).
-3. Publisher's **Subscriptions** view for the listing (who subscribed) —
-   `manage_subscriptions.sh --list` or the console.
-4. Subscriber's Explorer showing the linked dataset (read-only).
-5. Sample query result + the job details showing it ran/billed in the subscriber
-   project (cost isolation).
-6. Audit-log query results.
+Console screens, in the order a reader would need them. Terminal output does not
+belong in a deck for non-engineers — capture the console.
+
+**Architecture / setup**
+
+1. The **data exchange** page — `Private` discovery type visible.
+2. `airport_share` dataset → **`Sharing`** → **Authorized datasets**, showing it
+   authorized on gold + semantic. This is the "products, not base tables" proof.
+
+**Publisher workflow**
+
+3. **`Create exchange`** dialog, opened, showing the fields and the
+   `Subscriber Email Logging` / `Public Discoverability` toggles. (You can cancel
+   — the point is the form.)
+4. The **listing page**: icon, description, categories, and the rendered
+   **`Documentation`** Markdown.
+5. **`Create listing`** → `Configure data` showing **`Data Egress controls`**.
+6. Listing → **`Set permissions`**, showing the principal holding
+   **`Analytics Hub Subscriber`** — scoped to the listing, not the project.
+
+**Subscriber workflow**
+
+7. Subscriber's `Sharing (Analytics Hub)` → **`Search listings`** with the
+   `Private` filter applied.
+8. The **`Create linked dataset`** dialog (`Project`, `Linked dataset name`).
+9. Subscriber's BigQuery **`Explorer`** showing the linked dataset — note its
+   **different icon**.
+10. A query result against the linked dataset.
+11. **The cost-isolation shot:** `INFORMATION_SCHEMA.JOBS_BY_PROJECT` run *in the
+    subscriber project*, showing the job in their history with bytes billed.
+
+**Approval & governance**
+
+12. A viewer-only principal on the listing — no `Subscribe` available.
+13. Listing → **`Manage subscriptions`**, showing an active and a revoked
+    (`STATE_INACTIVE`) subscription side by side.
+14. The **`Remove subscription?`** confirmation dialog.
+15. Exchange → **`Usage metrics`** tab, especially **Subscribers per organization**.
+16. Audit-log query results over `sharing_audit`.
 
 ## Teardown
 

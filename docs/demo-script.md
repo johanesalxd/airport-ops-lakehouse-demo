@@ -259,31 +259,64 @@ Points to land:
 
 ### 7d.2 Publisher experience — the admin workflow (10 min)
 
-Create the private exchange + listing and whitelist the subscriber:
+**Lead in the console.** This is the part the audience will screenshot, and a
+terminal is worthless to a non-engineer. The setup already exists, so walk the
+result and show the *form* rather than re-creating anything.
+
+In **`Sharing (Analytics Hub)`**:
+
+1. The **data exchange** — note the `Private` discovery type.
+2. Click **`Create exchange`** to show the form: `Project` / `Region`
+   (immutable), `Display name`, `Primary contact`, and the
+   **`Subscriber Email Logging`** and **`Public Discoverability`** toggles. Then
+   **cancel** — the point is the shape of the decision, not another exchange.
+   - On email logging, say it out loud: it logs *which individual* at the partner
+     ran each query (`INFORMATION_SCHEMA.SHARED_DATASET_USAGE.job_principal_subject`),
+     and it is a **one-way door** — to turn it off you delete and recreate the
+     exchange.
+3. The **listing** — the icon, description, categories, and the rendered
+   **`Documentation`** Markdown. This is the data contract a subscriber reads.
+4. **`Create listing`** → **`Configure data`** → **`Data Egress controls`**. Show
+   that `Disable copy and export of shared data` is on. This matters later: it is
+   one of the controls the publisher *keeps* after handing over compute.
+5. Listing → **`Set permissions`** → the principal holding
+   **`Analytics Hub Subscriber`**, scoped to the listing.
+
+> ⚠️ **The isolation pitfall worth stating out loud:** never grant
+> `roles/analyticshub.subscriber` at the *project* level. That lets a consumer
+> subscribe to *every* listing in the project. Grant it **per listing**. This is
+> the single most common mistake in a hub-and-spoke rollout.
+
+**Then reveal the script** — this is the stronger ordering:
 
 ```bash
 source .env && bash scripts/setup_analytics_hub.sh
 ```
 
-The script is idempotent, so it is safe to run live even though the resources
-already exist — it will report `already exists` and move on.
+Idempotent, so it is safe to run live; it will report `already exists` and move
+on. Frame it as: *"everything you just watched me click is four API calls. This is
+how you onboard partner number ten, not partner number one."*
 
-Then show, in the **Sharing (Analytics Hub)** console:
-
-1. The **data exchange** — note `Private` discovery type.
-2. The **listing** over `airport_share`, and its `primaryContact`.
-3. **Set permissions** on the listing → the whitelisted subscriber principal
-   holding `roles/analyticshub.subscriber`.
-
-> ⚠️ **The isolation pitfall worth stating out loud:** never grant
-> `roles/analyticshub.subscriber` at the *project* level. That lets a consumer
-> subscribe to *every* listing in the project. Grant it **per listing**, as the
-> script does. This is the single most common mistake in a hub-and-spoke rollout.
+Console click-paths and the matching Google Cloud documentation links are in
+[`data-sharing.md`](data-sharing.md#doing-the-same-thing-in-the-console) — useful
+if someone asks "how would we reproduce this ourselves?"
 
 ### 7d.3 Subscriber onboarding & cost isolation (10 min)
 
-Switch to the **subscriber window**. From the spoke, link the dataset and run a
-cost-isolated query:
+Switch to the **subscriber window**. Again, console first.
+
+**How a subscriber finds a private listing.** In the subscriber's
+`Sharing (Analytics Hub)` → **`Search listings`** → Filters → `Listings` →
+**`Private`**. Worth stating: private listings are not broadly browsable — the
+publisher hands over the **listing URL**. Making them discoverable in the catalog
+means making the exchange public, which is usually not what you want for partner
+data.
+
+**Subscribing.** Click the listing → **`Subscribe`** → the
+**`Create linked dataset`** dialog asks for `Project` and
+`Linked dataset name` → **`Save`**.
+
+The equivalent, for the tenth partner:
 
 ```bash
 source .env && bash scripts/subscribe_analytics_hub.sh
@@ -291,7 +324,8 @@ source .env && bash scripts/subscribe_analytics_hub.sh
 
 Then show, in the subscriber's console:
 
-1. The **linked dataset** in Explorer — read-only, no copy.
+1. The **linked dataset** in **`Explorer`** — point out it has a **different
+   icon** from a normal dataset. Read-only, no copy, it is a pointer.
 2. A query against `shr_airport_operations_daily` returning rows.
 3. **The punchline — where the cost landed.** Run this *in the subscriber
    project*; it proves compute was billed to the spoke, not the hub:
@@ -315,15 +349,33 @@ Then show, in the subscriber's console:
 
 ### 7d.4 Governance, approval & monitoring (15 min)
 
-**Who has access, and how do you take it away.** From the hub:
+**Who has access, and how do you take it away.** In the console: listing →
+**`Manage subscriptions`**. You will see one `STATE_ACTIVE` subscription and one
+`STATE_INACTIVE` — the inactive one was revoked earlier. Access is gone, the
+record is retained. That is the revocation workflow, visible.
+
+To show the revoke path itself: **`Subscriptions`** → tick a subscription →
+**`Remove Subscriptions`** → the **`Remove subscription?`** dialog requires you
+to type `remove` → **`Remove`**. Show the dialog; you do not have to go through
+with it on the live subscription.
+
+Scripted equivalent:
 
 ```bash
 source .env && bash scripts/manage_subscriptions.sh --list
 ```
 
-You will see one `STATE_ACTIVE` subscription and one `STATE_INACTIVE` — the
-inactive one is a previously revoked subscription. That is the revocation
-workflow, and the record is deliberately retained for audit.
+**The admission gate, demonstrated.** A second identity holds
+**`Analytics Hub Viewer`** on the exchange but *not*
+`Analytics Hub Subscriber` on the listing. Signed in as that identity, the
+listing is **visible but cannot be subscribed to** — attempting it returns
+`PERMISSION_DENIED` on `analyticshub.listings.subscribe`. Grant them
+`Analytics Hub Subscriber` via **`Set permissions`**, refresh, and the path
+opens.
+
+That round trip *is* the approval: viewer sees it, cannot act, owner grants,
+consumer proceeds. The listing's **`Request access contact`** is the channel they
+use to ask.
 
 **Approval models.** Expect the question *"where is the UI for the data owner to
 approve a request?"* The honest answer has three parts — see the table in
@@ -362,11 +414,32 @@ Point out: publish/whitelist/revoke are **Admin Activity** (always on) and land 
 the *publisher* project; `SubscribeListing` is logged in the *subscriber* project;
 read methods are **Data Access** and are off by default.
 
-**Also mention:** the listing has a built-in
-[usage-metrics dashboard](https://docs.cloud.google.com/bigquery/docs/analytics-hub-monitor-listings)
-(consumption per subscriber), and upstream **RLS/CLS from the `security` stage
-still applies** to subscribers querying the shared views — fine-grained control
-survives the sharing boundary.
+**Usage metrics — no query needed.** Exchange → **`Usage metrics`** tab → pick
+the listing and a time range. Shows Total Subscriptions, Total Subscribers, Total
+jobs executed, Total bytes scanned, a Daily Subscriptions chart,
+**Subscribers per organization**, Daily Executed Jobs, and Tables' job frequency.
+`Subscribers per organization` is the one to linger on if the audience cares
+about multi-party sharing.
+
+**Also mention:** upstream **RLS/CLS from the `security` stage still applies** to
+subscribers querying the shared views — fine-grained control survives the sharing
+boundary.
+
+**What the publisher keeps vs. gives up.** Worth being explicit, because it is
+the question behind most governance concerns:
+
+| Publisher keeps | Publisher gives up |
+|---|---|
+| Who may subscribe (per-listing IAM) | Query cost — billed to the subscriber |
+| What is exposed (curated views) | Slot/spend limits inside the subscriber's project |
+| Row/column visibility (RLS/CLS) | When and how often they query |
+| Copy/export restrictions (`Data Egress controls`) | |
+| Revocation, instantly | |
+| Visibility (usage metrics + audit logs) | |
+
+If someone expects the publisher to cap a subscriber's compute: that is not
+possible once compute is delegated, and it is the direct trade for
+"subscriber-paid compute". The controls in the left column are the answer.
 
 ### Closing line for this section
 
