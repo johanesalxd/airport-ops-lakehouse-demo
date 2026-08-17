@@ -213,8 +213,25 @@ Say: *"Same query, same table — the result depends on who's asking. Rows are
 filtered by RLS; sensitive columns are masked or blocked by CLS data policies.
 No views, no copies, all declared in Dataform alongside the transformations."*
 
-> If the sales view still shows all rows/raw values, the data-policy IAM may need
-> a minute to propagate after the run — re-run the query.
+> If the sales view still shows all rows *and* raw values, the data-policy IAM
+> may need a minute to propagate after the run — re-run the query.
+>
+> If the sales view shows **all rows but correctly masked columns**, that is
+> **not** propagation. It means a principal holds
+> `roles/bigquery.filteredDataViewer` directly through IAM, which makes it
+> eligible for every row access policy in scope — including
+> `admin_full_access` (`FILTER USING (TRUE)`). Check with:
+>
+> ```bash
+> gcloud projects get-iam-policy your-project-id \
+>   --flatten="bindings[].members" \
+>   --format="value(bindings.members,bindings.role)" \
+>   | grep filteredDataViewer
+> ```
+>
+> The fix is to remove that binding: group members need only
+> `bigquery.jobUser`, because the `ROW ACCESS POLICY` grantee list already
+> grants row access.
 
 ## 7d. Data sharing: Analytics Hub hub-and-spoke (45–60 min) — live
 

@@ -260,8 +260,12 @@ them from the BigQuery connection details pane or with `bq show --connection`.
   dead-letter topic.
 - **Composer worker SA**: `dataform.admin` on the project + `serviceAccountUser`
   on the Dataform execution SA (so it can run workflow invocations).
-- **Governance Google Groups**: `bigquery.dataViewer` on the governance dataset
-  so RLS/CLS behavior can be tested with group members.
+- **Governance Google Groups**: `bigquery.jobUser` only. Row access is granted
+  by the `ROW ACCESS POLICY` grantee list and column access by
+  `GRANT FINE_GRAINED_READ`, both issued by Dataform in the `security` stage —
+  so no dataset- or project-level read role is needed. In particular, do **not**
+  grant `bigquery.filteredDataViewer` via IAM: at that scope it makes a
+  principal eligible for every row access policy in scope, defeating RLS.
 
 ## The Composer DAG
 

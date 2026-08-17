@@ -51,8 +51,16 @@ attaches:
 > Terraform, or out-of-band `bq`/API steps. (The older Data-Catalog *policy-tag*
 > mechanism did require those; this demo uses the SQL approach instead.) The
 > execution SA needs `bigquery.dataOwner` (RLS) + `bigquerydatapolicy.admin`
-> (data policies); group members need `bigquery.filteredDataViewer` +
-> `bigquery.jobUser` (granted by `bootstrap.sh`).
+> (data policies); group members only need `bigquery.jobUser` (granted by
+> `bootstrap.sh`) — their row access comes from the `ROW ACCESS POLICY` grantee
+> list and their column access from `GRANT FINE_GRAINED_READ`.
+>
+> **Do not grant `bigquery.filteredDataViewer` through IAM.** At project or
+> dataset level it makes a principal eligible for *every* row access policy in
+> scope, so the sales group would inherit `admin_full_access`
+> (`FILTER USING (TRUE)`) and see all rows — while CLS masking still behaves
+> correctly, which makes the misconfiguration easy to miss. See the
+> [row-level security best practices](https://cloud.google.com/bigquery/docs/best-practices-row-level-security).
 
 Still open as future extensions:
 
