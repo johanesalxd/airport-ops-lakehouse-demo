@@ -11,8 +11,7 @@ environment, the GCP Dataform repository linked to the companion Git repo, the
 Secret Manager secret holding the Git token, and the **two Google Groups** for the
 RLS/CLS stage (`bq-rls-cls-dataform-admin@…`, `bq-rls-cls-dataform-sales@…` —
 `bootstrap.sh` grants them `bigquery.jobUser` only, not a read role, but cannot
-create groups). See
-[`architecture.md`](architecture.md) for how they are wired.
+create groups). See [`architecture.md`](architecture.md) for how they are wired.
 
 ## Pre-flight checklist (10 min before the session)
 
@@ -21,10 +20,10 @@ create groups). See
     (sees all rows + raw values in §7c).
   - **B — sales:** a member of `bq-rls-cls-dataform-sales@…` (sees filtered rows +
     masked columns in §7c). Needed for the RLS/CLS reveal.
-- **Tabs to pre-open:** Composer Airflow UI (`dev-airflow` → DAG
-  `airport_ops_lakehouse`), BigQuery Studio, the BigQuery **Dataform** repo page,
-  the **Sharing (Analytics Hub)** page (exchange → listing), and the slide deck
-  (PDF).
+- **Tabs to pre-open:** the Composer Airflow UI for `$COMPOSER_ENV`
+  (`dev-airflow` in the reference environment) on DAG `airport_ops_lakehouse`,
+  BigQuery Studio, the BigQuery **Dataform** repo page, the **Sharing (Analytics
+  Hub)** page (exchange → listing), and the slide deck (PDF).
 - **A third window signed in as the subscriber**, with the console project set to
   `SUBSCRIBER_PROJECT` — needed for §7d to show the linked dataset and the
   cost-isolated query landing in the *subscriber's* job history.
@@ -38,7 +37,7 @@ create groups). See
 - **Sanity check** one query returns rows (e.g. `sem_airport_operations_daily`)
   and one *subscriber-side* query returns rows from the linked dataset.
 - **Do NOT run `scripts/teardown.sh`** between rehearsal and the live session — it
-  deletes the audit-log sink and dataset that §7d step 5 depends on, and new sink
+  deletes the audit-log sink and dataset that §7d.4 depends on, and new sink
   tables take minutes to reappear.
 
 ## 0. One-time seed (before the session)
@@ -97,7 +96,7 @@ is called from Dataform for the non-SQL work."
 
 ## 5. Run it end-to-end from Airflow (5 min) — live
 
-- Open the Composer **`dev-airflow`** Airflow UI → DAG `airport_ops_lakehouse`.
+- Open the Composer **`$COMPOSER_ENV`** Airflow UI → DAG `airport_ops_lakehouse`.
 - **Reuse the latest green run** (recommended for the live session): open its grid
   and walk the stages `compile_repo → setup → ingestion → bronze → silver → gold →
   semantic → quality → security → share → publish_run_summary`. Only **trigger** a fresh
@@ -319,9 +318,16 @@ In **`Sharing (Analytics Hub)`**:
      exchange.
 3. The **listing** — the icon, description, categories, and the rendered
    **`Documentation`** Markdown. This is the data contract a subscriber reads.
-4. **`Create listing`** → **`Configure data`** → **`Data Egress controls`**. Show
-   that `Disable copy and export of shared data` is on. This matters later: it is
-   one of the controls the publisher *keeps* after handing over compute.
+4. Open the **existing listing** → **`Configure data`** → **`Data Egress
+   controls`**, and show whether `Disable copy and export of shared data` is on.
+   This matters later: it is one of the controls the publisher *keeps* after
+   handing over compute. (Use the existing listing, not the `Create listing`
+   form — a blank form shows defaults, not your listing's actual setting.)
+   - **`setup_analytics_hub.py` does not set this.** The script creates the
+     listing with display name, description, primary contact, and dataset only,
+     so a fresh run leaves egress controls **off**. Enable it in the console if
+     you intend to present it as on, or say plainly that it is available and
+     not enabled here.
 5. Listing → **`Set permissions`** → the principal holding
    **`Analytics Hub Subscriber`**, scoped to the listing.
 

@@ -162,6 +162,11 @@ Exchange → **`Create listing`**
    - `Disable copy and export of shared data`
    - `Disable copy and export of query results` (also selects the first)
    - `Disable copy and export of tables through APIs` (also selects the first)
+
+   > **Console-only in this repo.** `scripts/setup_analytics_hub.py` does not set
+   > `restricted_export_config`, so a listing created by the script has egress
+   > controls **off**. Enable them in the console afterwards if you need them.
+   > Tracked as a follow-up in [`roadmap.md`](roadmap.md).
 2. **`Listing details`** — `Display name` (required), plus optional `Category`
    (up to two), `Data affinity`, `Icon` (PNG/JPEG, <512 KiB, ≤512×512),
    `Description`, `Public discoverability`, `Subscriber Email Logging`, and
@@ -367,9 +372,9 @@ To query events in BigQuery, route them with a
 # 1. Enable Data Access audit logs for analyticshub.googleapis.com (console:
 #    IAM & Admin -> Audit Logs), or via the project IAM policy auditConfigs.
 # 2. Create a dataset and a partitioned-table sink filtered to the service:
-bq --location=us-central1 mk --dataset "${PROJECT_ID}:sharing_audit"
-gcloud logging sinks create sharing_audit_sink \
-  "bigquery.googleapis.com/projects/${PROJECT_ID}/datasets/sharing_audit" \
+bq --location="${AH_LOCATION}" mk --dataset "${PROJECT_ID}:${AUDIT_DATASET:-sharing_audit}"
+gcloud logging sinks create "${AUDIT_SINK:-sharing_audit_sink}" \
+  "bigquery.googleapis.com/projects/${PROJECT_ID}/datasets/${AUDIT_DATASET:-sharing_audit}" \
   --use-partitioned-tables \
   --log-filter='protoPayload.serviceName="analyticshub.googleapis.com"'
 # 3. Grant the printed writer identity roles/bigquery.dataEditor on the dataset.
@@ -418,7 +423,8 @@ belong in a deck for non-engineers — capture the console.
    — the point is the form.)
 4. The **listing page**: icon, description, categories, and the rendered
    **`Documentation`** Markdown.
-5. **`Create listing`** → `Configure data` showing **`Data Egress controls`**.
+5. The existing listing → `Configure data` showing **`Data Egress controls`**
+   (off unless you enabled them in the console — the script does not).
 6. Listing → **`Set permissions`**, showing the principal holding
    **`Analytics Hub Subscriber`** — scoped to the listing, not the project.
 

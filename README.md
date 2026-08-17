@@ -361,7 +361,7 @@ search & embeddings, an Iceberg open-table-format variant, a BI dashboard, the
 privacy-preserving **Data Clean Room** variant of data sharing, and Dataform
 CI/CD environments. These are documented as next steps in
 [`docs/roadmap.md`](docs/roadmap.md). **Automated BigQuery data insights** is
-available as an optional script (see *How to run* below).
+available as an optional script (see [*How to run*](#how-to-run) above).
 
 > Measured against Google Cloud's
 > [end-to-end data integration](https://cloud.google.com/use-cases/data-integration)

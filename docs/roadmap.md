@@ -229,6 +229,11 @@ Point Looker (or Looker Studio) at the `airport_semantic` views — the demo's
 
 > **Location note:** Analytics Hub resources are created in the shared dataset's
 > region (`us-central1`), not the `US` multi-region (`AH_LOCATION` in `.env`).
+>
+> **Known gap:** `setup_analytics_hub.py` does not set `restricted_export_config`
+> on the listing, so **`Data Egress controls` are off** for a script-created
+> listing and must be enabled in the console. Wiring it into the script (and
+> exposing it as an `.env` toggle) is a small, self-contained follow-up.
 
 Still open as future extensions:
 
