@@ -99,11 +99,26 @@ still succeeds and the bronze table stays empty — **the failure is silent**.
 gcloud pubsub subscriptions describe baggage-events-bq-sub --project="$PROJECT_ID"
 ```
 
-### Repairing a missing subscription
+### Subscription lifecycle
 
-`bootstrap.sh` creates this subscription, but it is the one streaming resource
-that can be deleted independently without breaking anything else, and re-running
-the whole bootstrap to get it back is disproportionate. Recreate it directly:
+The subscription is **transient on purpose**. Create it before a demo, remove it
+afterwards. Everything else in this pipeline — schema, topic, DLQ, bronze table,
+silver view, DAG — is durable and needs no attention between demos.
+
+It can also disappear on its own. Pub/Sub applies a default **expiration policy
+of 31 days of inactivity**, and this subscription is idle between demos. That is
+exactly what happened in the reference project:
+
+```
+2026-06-17 12:00  google.pubsub.v1.Subscriber.CreateSubscription    (bootstrap.sh)
+2026-07-18 14:06  Subscriber.InternalExpireInactiveSubscription     (Pub/Sub, 31 days later)
+```
+
+`bootstrap.sh` now passes `--expiration-period=never` so a fresh project does not
+hit this. A project bootstrapped before that change has a subscription that will
+still expire; recreate it with the command below to make it permanent.
+
+### Creating (or repairing) the subscription
 
 ```bash
 gcloud pubsub subscriptions create baggage-events-bq-sub \
@@ -113,11 +128,32 @@ gcloud pubsub subscriptions create baggage-events-bq-sub \
   --use-topic-schema \
   --write-metadata \
   --dead-letter-topic=baggage-events-dlq \
-  --max-delivery-attempts=5
+  --max-delivery-attempts=5 \
+  --expiration-period=never
 ```
 
 Only events published *after* the subscription exists are delivered; Pub/Sub does
-not backfill. Re-trigger the DAG after recreating it.
+not backfill. Re-trigger the DAG after creating it.
+
+Confirm the write path is healthy before relying on it — `bigqueryConfig.state`
+must read `ACTIVE`. A schema mismatch or a missing service-agent grant shows up
+here rather than as a delivery error:
+
+```bash
+gcloud pubsub subscriptions describe baggage-events-bq-sub \
+  --project="$PROJECT_ID" --format='value(bigqueryConfig.state)'
+```
+
+A 60-second smoke run at 5 events/sec should land **300 rows** in bronze. The
+silver view will show slightly fewer — BigQuery subscriptions are at-least-once,
+so a handful of redeliveries is normal and is precisely what the dedupe view
+removes. A recent run produced 300 bronze rows and 298 distinct events.
+
+Remove it when you are done:
+
+```bash
+gcloud pubsub subscriptions delete baggage-events-bq-sub --project="$PROJECT_ID"
+```
 
 Trigger the Composer DAG manually:
 

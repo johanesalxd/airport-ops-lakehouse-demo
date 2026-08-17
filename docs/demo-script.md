@@ -536,10 +536,13 @@ the same two commands."*
 
 > **Check the subscription exists before you show this — it fails silently.**
 > The DAG only publishes to Pub/Sub. The write into BigQuery is done by the
-> `baggage-events-bq-sub` BigQuery subscription that `bootstrap.sh` creates. If
-> that subscription is missing (deleted by hand, or a `bootstrap.sh` run whose
-> creation step failed), the DAG still goes **green** — it published fine — and
-> the bronze table simply stays empty. There is no error anywhere to notice.
+> `baggage-events-bq-sub` BigQuery subscription. If that subscription is missing,
+> the DAG still goes **green** — it published fine — and the bronze table simply
+> stays empty. There is no error anywhere to notice.
+>
+> Expect it to be missing. The subscription is **transient by design**: it is
+> created before a demo and removed afterwards, and Pub/Sub also deletes it
+> automatically after 31 days idle. Treat "present" as the exception.
 >
 > ```bash
 > gcloud pubsub subscriptions describe baggage-events-bq-sub \
@@ -549,7 +552,7 @@ the same two commands."*
 > ```
 >
 > Recreate it with the command in
-> [`streaming-ingestion.md`](streaming-ingestion.md#repairing-a-missing-subscription).
+> [`streaming-ingestion.md`](streaming-ingestion.md#creating-or-repairing-the-subscription).
 > Do not debug this live; skip the section instead.
 
 Trigger the separate manual DAG for a short run:

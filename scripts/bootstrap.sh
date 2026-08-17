@@ -221,13 +221,20 @@ echo ">> Creating Pub/Sub BigQuery subscription"
 if gcloud pubsub subscriptions describe "${PUBSUB_BAGGAGE_SUBSCRIPTION}" >/dev/null 2>&1; then
   echo "   - subscription ${PUBSUB_BAGGAGE_SUBSCRIPTION} (exists)"
 else
+  # --expiration-period=never is required. Pub/Sub's default expiration policy
+  # deletes a subscription after 31 days of inactivity, and this one is idle
+  # between demos. When it disappears the streaming demo fails silently: the DAG
+  # publishes fine and goes green, but nothing writes to BigQuery and the bronze
+  # table just stays empty.
+  # https://cloud.google.com/pubsub/docs/subscription-properties#expiration_period
   gcloud pubsub subscriptions create "${PUBSUB_BAGGAGE_SUBSCRIPTION}" \
     --topic="${PUBSUB_BAGGAGE_TOPIC}" \
     --bigquery-table="${PROJECT_ID}:${DS_BRONZE}.brz_baggage_events_stream" \
     --use-topic-schema \
     --write-metadata \
     --dead-letter-topic="${PUBSUB_BAGGAGE_DLQ_TOPIC}" \
-    --max-delivery-attempts=5 >/dev/null
+    --max-delivery-attempts=5 \
+    --expiration-period=never >/dev/null
   echo "   - subscription ${PUBSUB_BAGGAGE_SUBSCRIPTION} (created)"
 fi
 
