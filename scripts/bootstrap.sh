@@ -251,15 +251,20 @@ for ROLE in roles/bigquery.dataOwner roles/bigquerydatapolicy.admin; do
     --condition=None >/dev/null
 done
 
-echo ">> Granting the demo groups read access to RLS/CLS-protected tables"
-# Members need filteredDataViewer (query RLS tables; rows auto-filtered by the
-# policy grantee list) + jobUser (run queries). FINE_GRAINED_READ on the data
-# policies is granted by Dataform itself (cls_staff_directory.sqlx).
+echo ">> Granting the demo groups query access for the RLS/CLS showcase"
+# Members only need jobUser (run queries). Row access comes from the ROW ACCESS
+# POLICY grantee list and column access from GRANT FINE_GRAINED_READ, both
+# granted by Dataform (rls_staff_directory.sqlx / cls_staff_directory.sqlx).
+#
+# Do NOT grant roles/bigquery.filteredDataViewer here. At project (or dataset)
+# level it makes a principal eligible for EVERY row access policy in scope, so
+# the sales group inherits admin_full_access (FILTER USING (TRUE)) and sees all
+# rows -- while CLS masking still behaves correctly, which hides the bug.
+# https://cloud.google.com/bigquery/docs/best-practices-row-level-security
 for GROUP in "${ADMIN_GROUP}" "${SALES_GROUP}"; do
-  for ROLE in roles/bigquery.filteredDataViewer roles/bigquery.jobUser; do
-    gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-      --member="group:${GROUP}" --role="${ROLE}" --condition=None >/dev/null
-  done
+  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="group:${GROUP}" --role="roles/bigquery.jobUser" \
+    --condition=None >/dev/null
 done
 
 echo ">> Granting Vertex AI access to the Gemini connection SA"
