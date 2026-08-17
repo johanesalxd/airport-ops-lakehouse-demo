@@ -205,8 +205,11 @@ airport-ops-lakehouse-demo/
   bindings.
 - **Two Google Groups must already exist** for the RLS/CLS `security` stage:
   `bq-rls-cls-dataform-admin@<domain>` and `bq-rls-cls-dataform-sales@<domain>`.
-  `bootstrap.sh` grants them read roles (it can't create groups), so it will fail
-  if they don't exist. Set them as `ADMIN_GROUP` / `SALES_GROUP` in `.env`.
+  `bootstrap.sh` grants them `bigquery.jobUser` only — deliberately *not* a read
+  role, since row access comes from the `ROW ACCESS POLICY` grantee list and
+  column access from `GRANT FINE_GRAINED_READ`, both issued by Dataform. It
+  can't create groups, so it will fail if they don't exist. Set them as
+  `ADMIN_GROUP` / `SALES_GROUP` in `.env`.
 - **Assumed already provisioned** (the demo *reuses* these rather than creating
   them): three BigQuery connections — a **Spark** connection, a **CLOUD_RESOURCE**
   connection for Gemini, and one for BigLake — plus a **Cloud Composer**
