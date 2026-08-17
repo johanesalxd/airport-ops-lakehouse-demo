@@ -85,12 +85,46 @@ Official references:
 
 ## Run the stream
 
+> **Airflow 3 expects `--run-id`;** `-r` is Airflow 2 syntax. Use a unique run id
+> — a fixed one fails on the second trigger with a duplicate-DagRun error, and
+> Composer 3 does not support `dags delete-dag-run` to clear it.
+
+### Check the subscription first
+
+The DAG publishes to Pub/Sub and nothing else. Everything downstream depends on
+the `baggage-events-bq-sub` BigQuery subscription. If it is missing, the DAG
+still succeeds and the bronze table stays empty — **the failure is silent**.
+
+```bash
+gcloud pubsub subscriptions describe baggage-events-bq-sub --project="$PROJECT_ID"
+```
+
+### Repairing a missing subscription
+
+`bootstrap.sh` creates this subscription, but it is the one streaming resource
+that can be deleted independently without breaking anything else, and re-running
+the whole bootstrap to get it back is disproportionate. Recreate it directly:
+
+```bash
+gcloud pubsub subscriptions create baggage-events-bq-sub \
+  --project="$PROJECT_ID" \
+  --topic=baggage-events \
+  --bigquery-table="${PROJECT_ID}:airport_bronze.brz_baggage_events_stream" \
+  --use-topic-schema \
+  --write-metadata \
+  --dead-letter-topic=baggage-events-dlq \
+  --max-delivery-attempts=5
+```
+
+Only events published *after* the subscription exists are delivered; Pub/Sub does
+not backfill. Re-trigger the DAG after recreating it.
+
 Trigger the Composer DAG manually:
 
 ```bash
 gcloud composer environments run "$COMPOSER_ENV" \
   --location="$REGION" dags trigger -- \
-  -r "baggage-stream-$(date +%Y%m%d%H%M%S)" \
+  --run-id "baggage-stream-$(date +%Y%m%d%H%M%S)" \
   airport_ops_baggage_stream_demo
 ```
 
@@ -109,7 +143,7 @@ For a short smoke test, use:
 ```bash
 gcloud composer environments run "$COMPOSER_ENV" \
   --location="$REGION" dags trigger -- \
-  -r "baggage-stream-smoke-$(date +%Y%m%d%H%M%S)" \
+  --run-id "baggage-stream-smoke-$(date +%Y%m%d%H%M%S)" \
   -c '{"events_per_second":5,"duration_seconds":60}' \
   airport_ops_baggage_stream_demo
 ```

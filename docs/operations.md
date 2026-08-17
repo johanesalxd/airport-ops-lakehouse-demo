@@ -95,8 +95,12 @@ The only per-run change is the `_batch_id` stamp on bronze rows (= the Airflow
 IAM grants are likewise idempotent.
 
 > Caveat: idempotency holds for a fixed input. Changing `--days`/`--seed`/date
-> window generates different data and rsync adds new `dt=` partitions (old ones
-> linger in GCS until cleared).
+> window generates different data, so bronze content changes. Stale `dt=`
+> partitions are **not** a concern: `upload_demo_data.sh` deletes the local `out/`
+> dir and runs `gcloud storage rm -r gs://$RAW_BUCKET/raw` before the rsync, so
+> each run replaces the landing zone wholesale. Note the flip side — the raw
+> prefix is destroyed on every upload, so do not park anything else under
+> `raw/`.
 
 ## Known issues & fixes (bring-up history)
 

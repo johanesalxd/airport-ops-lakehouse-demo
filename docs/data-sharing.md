@@ -442,8 +442,9 @@ belong in a deck for non-engineers — capture the console.
 **Approval & governance**
 
 12. A viewer-only principal on the listing — no `Subscribe` available.
-13. Listing → **`Manage subscriptions`**, showing an active and a revoked
-    (`STATE_INACTIVE`) subscription side by side.
+13. Listing → **`Manage subscriptions`**, showing an active subscription and at
+    least one revoked (`STATE_INACTIVE`) one side by side. Revoked subscriptions
+    accumulate across rehearsals, so expect more than one.
 14. The **`Remove subscription?`** confirmation dialog.
 15. Exchange → **`Usage metrics`** tab, especially **Subscribers per organization**.
 16. Audit-log query results over `sharing_audit`.

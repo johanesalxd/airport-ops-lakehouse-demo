@@ -116,6 +116,7 @@ assertions and the data-quality summary have something to catch.
 | `airport_governance` | RLS/CLS showcase (`staff_directory` + row/data policies) |
 | `airport_share` | curated `shr_*` authorized views published via Analytics Hub (hub-and-spoke data sharing) |
 | `dataform_assertions` | assertion results |
+| `sharing_audit` | Analytics Hub Data Access audit logs, via the Cloud Logging sink (created on demand — see [`data-sharing.md`](data-sharing.md), not `bootstrap.sh`) |
 
 Everything is **regional `us-central1`** and must stay co-located with the Spark
 connection — a Spark stored procedure must be in the same location as its
@@ -248,12 +249,14 @@ them from the BigQuery connection details pane or with `bq show --connection`.
 
 - **Dataform execution SA** (`dataform-airport@…`): `bigquery.dataEditor`,
   `bigquery.jobUser`, `bigquery.connectionAdmin`, `storage.objectViewer`,
-  `dataproc.editor`, and `bigquerydatapolicy.admin`. Connection admin is used
-  because BigQuery resources created `WITH CONNECTION` need
-  `bigquery.connections.delegate`.
+  `dataproc.editor`, plus `bigquery.dataOwner` and `bigquerydatapolicy.admin`.
+  Connection admin is used because BigQuery resources created
+  `WITH CONNECTION` need `bigquery.connections.delegate`. `dataOwner` and
+  `bigquerydatapolicy.admin` are what let the `security` stage create row
+  access policies and bind data policies to columns.
 - **Gemini connection SA**: `aiplatform.user`.
 - **Spark connection SA**: `bigquery.dataEditor`, `bigquery.jobUser`,
-  `storage.objectViewer`, `dataproc.worker`.
+  `storage.objectViewer`, `dataproc.worker`, `datalineage.producer`.
 - **BigLake connection SA**: `storage.objectViewer` on the raw bucket.
 - **Pub/Sub service agent**: `bigquery.dataEditor`, `bigquery.metadataViewer`,
   `pubsub.publisher`, and `pubsub.subscriber` for the BigQuery subscription and
@@ -266,6 +269,28 @@ them from the BigQuery connection details pane or with `bq show --connection`.
   so no dataset- or project-level read role is needed. In particular, do **not**
   grant `bigquery.filteredDataViewer` via IAM: at that scope it makes a
   principal eligible for every row access policy in scope, defeating RLS.
+
+> **Upgrading an existing deployment.** Earlier versions of `bootstrap.sh`
+> granted project-level `roles/bigquery.filteredDataViewer` to both groups.
+> Re-running the current `bootstrap.sh` does **not** remove it — the script only
+> adds bindings, so a project provisioned before this fix keeps the old grant and
+> the RLS demo silently shows every row to the restricted group. Check and revoke:
+>
+> ```bash
+> gcloud projects get-iam-policy "$PROJECT_ID" \
+>   --flatten="bindings[].members" \
+>   --filter="bindings.role=roles/bigquery.filteredDataViewer" \
+>   --format="value(bindings.members)"
+>
+> gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+>   --member="group:${SALES_GROUP}" \
+>   --role="roles/bigquery.filteredDataViewer" --condition=None
+> ```
+>
+> Verify by querying `airport_governance.staff_directory` as a sales-group member:
+> you should see only Sales rows. If you still see all six, the binding is still
+> in place — or has been inherited from a folder/organization policy, which
+> `remove-iam-policy-binding` at project level will not clear.
 
 ## The Composer DAG
 

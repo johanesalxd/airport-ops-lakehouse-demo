@@ -1,7 +1,12 @@
-# Demo script — Airport Operations Lakehouse (15–25 min)
+# Demo script — Airport Operations Lakehouse (~75–90 min)
 
 A "concept then live" runbook for the workshop. Use the project and region from
 your `.env` file.
+
+**Budget.** Sections 1–8 run **~70–85 min**, dominated by §7d data sharing
+(45–60 min on its own). The optional §7b, §7c, and the streaming appendix add
+**~11 min**. For a **20–25 min** short version, run §1–§6 plus §8 and skip §7
+entirely.
 
 ## Assumed one-time platform setup
 
@@ -100,8 +105,9 @@ is called from Dataform for the non-SQL work."
 - **Reuse the latest green run** (recommended for the live session): open its grid
   and walk the stages `compile_repo → setup → ingestion → bronze → silver → gold →
   semantic → quality → security → share → publish_run_summary`. Only **trigger** a fresh
-  run if you specifically want to show it execute (~8 min end-to-end). The
-  medallion layers are stages — point that out.
+  run if you specifically want to show it execute (**~11–12 min** end-to-end; the
+  last measured full run was 11m27s). The medallion layers are stages — point
+  that out.
 - While it runs, open the **Dataform** page in the console → the repository →
   show the **compiled graph** (dependency DAG) and the tags. Also open
   **Workflow Execution Logs** — this is where the per-stage SQL actually executes
@@ -415,9 +421,12 @@ Then show, in the subscriber's console:
 ### 7d.4 Governance, approval & monitoring (15 min)
 
 **Who has access, and how do you take it away.** In the console: listing →
-**`Manage subscriptions`**. You will see one `STATE_ACTIVE` subscription and one
-`STATE_INACTIVE` — the inactive one was revoked earlier. Access is gone, the
-record is retained. That is the revocation workflow, visible.
+**`Manage subscriptions`**. You will see one `STATE_ACTIVE` subscription
+alongside several `STATE_INACTIVE` ones — the inactive ones were revoked in
+earlier runs. Access is gone, the record is retained. That is the revocation
+workflow, visible. (Revoked subscriptions accumulate with every rehearsal, so
+check the actual count with `manage_subscriptions.py --list` before you present
+it — do not quote a fixed number.)
 
 To show the revoke path itself: **`Subscriptions`** → tick a subscription →
 **`Remove Subscriptions`** → the **`Remove subscription?`** dialog requires you
@@ -524,6 +533,24 @@ the same two commands."*
   setup/subscribe scripts) — cost isolation per subscriber.
 
 ## Optional: streaming baggage demo (5 min)
+
+> **Check the subscription exists before you show this — it fails silently.**
+> The DAG only publishes to Pub/Sub. The write into BigQuery is done by the
+> `baggage-events-bq-sub` BigQuery subscription that `bootstrap.sh` creates. If
+> that subscription is missing (deleted by hand, or a `bootstrap.sh` run whose
+> creation step failed), the DAG still goes **green** — it published fine — and
+> the bronze table simply stays empty. There is no error anywhere to notice.
+>
+> ```bash
+> gcloud pubsub subscriptions describe baggage-events-bq-sub \
+>   --project="$PROJECT_ID" >/dev/null 2>&1 \
+>   && echo "OK: subscription present" \
+>   || echo "MISSING: streaming will produce no rows -- see streaming-ingestion.md"
+> ```
+>
+> Recreate it with the command in
+> [`streaming-ingestion.md`](streaming-ingestion.md#repairing-a-missing-subscription).
+> Do not debug this live; skip the section instead.
 
 Trigger the separate manual DAG for a short run:
 
