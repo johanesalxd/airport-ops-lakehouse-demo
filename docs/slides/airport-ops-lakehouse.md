@@ -331,6 +331,8 @@ Same query, same table — **the result depends on who's asking.** All declared 
 
 <span class="live">LIVE</span> &nbsp; Two identities run the **same** `SELECT` on `airport_governance.staff_directory` — compare rows + masked columns.
 
+<span class="small">Use an explicit column list. `bank_account` is blocked outright (no masking fallback), so `SELECT *` fails for the sales identity instead of masking.</span>
+
 ---
 
 ## Sharing beyond one BI tool: hub-and-spoke

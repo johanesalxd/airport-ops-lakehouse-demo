@@ -10,7 +10,8 @@ three BigQuery connections (Spark, Gemini, BigLake), the Cloud Composer
 environment, the GCP Dataform repository linked to the companion Git repo, the
 Secret Manager secret holding the Git token, and the **two Google Groups** for the
 RLS/CLS stage (`bq-rls-cls-dataform-admin@…`, `bq-rls-cls-dataform-sales@…` —
-`bootstrap.sh` grants them read roles but cannot create groups). See
+`bootstrap.sh` grants them `bigquery.jobUser` only, not a read role, but cannot
+create groups). See
 [`architecture.md`](architecture.md) for how they are wired.
 
 ## Pre-flight checklist (10 min before the session)
@@ -201,17 +202,37 @@ Then have two people (or impersonate the two groups) run the **same query** and
 compare:
 
 ```sql
--- bq-rls-cls-dataform-admin@  -> 6 rows, real ssn/email/salary, bank_account visible
+-- bq-rls-cls-dataform-admin@  -> 6 rows, real ssn/email/salary
 -- bq-rls-cls-dataform-sales@  -> 2 rows (Sales only), email "" / salary NULL /
---                                ssn SHA256, and bank_account ERRORS (blocked)
+--                                ssn SHA256
 SELECT staff_id, name, email, department, salary, ssn
 FROM `your-project-id.airport_governance.staff_directory`
 ORDER BY staff_id;
 ```
 
+> **Use the explicit column list above — do not run `SELECT *`.** `bank_account`
+> carries a `RAW_DATA_ACCESS_POLICY` with no masking policy to fall back to, so
+> for the sales identity *any* query touching that column fails outright rather
+> than masking it. `SELECT *` therefore returns a permission error for sales and
+> the row-filtering comparison is lost.
+
+Then show that denial **deliberately**, as the closing beat — same table, one
+extra column:
+
+```sql
+-- bq-rls-cls-dataform-admin@  -> 6 rows, real bank_account values
+-- bq-rls-cls-dataform-sales@  -> Access Denied: "does not have masked access or
+--                                raw data access to protected columns:
+--                                ...staff_directory.bank_account"
+SELECT staff_id, department, bank_account
+FROM `your-project-id.airport_governance.staff_directory`
+ORDER BY staff_id;
+```
+
 Say: *"Same query, same table — the result depends on who's asking. Rows are
-filtered by RLS; sensitive columns are masked or blocked by CLS data policies.
-No views, no copies, all declared in Dataform alongside the transformations."*
+filtered by RLS; sensitive columns are masked, hashed, or blocked entirely by CLS
+data policies. Four different behaviours on one table, no views, no copies, all
+declared in Dataform alongside the transformations."*
 
 > If the sales view still shows all rows *and* raw values, the data-policy IAM
 > may need a minute to propagate after the run — re-run the query.
