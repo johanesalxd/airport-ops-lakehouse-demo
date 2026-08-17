@@ -120,7 +120,7 @@ style: |
 
 | Service | Role |
 |---|---|
-| **Cloud Storage** | Raw landing zone (`dt=YYYY-MM-DD`) |
+| **Cloud Storage** | Raw landing zone (`raw/<source>/dt=YYYY-MM-DD`) |
 | **BigQuery** | The lakehouse engine — storage + compute for every layer |
 | **BigLake** | Governed external table over Parquet |
 | **BigQuery Spark stored procs** | Serverless PySpark for messy/compressed/nested files |

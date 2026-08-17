@@ -29,8 +29,9 @@ create groups). See
   `SUBSCRIBER_PROJECT` — needed for §7d to show the linked dataset and the
   cost-isolated query landing in the *subscriber's* job history.
 - **Project context:** console / `bq` set to your `PROJECT_ID`. Paste the §6–§7d
-  queries into a scratch BigQuery tab ahead of time (see
-  `scratch/demo-queries.sql`, which has the project IDs already substituted).
+  queries into a scratch BigQuery tab ahead of time, substituting
+  `your-project-id`. (`scratch/` is gitignored, so a fresh clone has no
+  pre-substituted file — keep your own local copy there if you find it useful.)
 - **Confirm the latest run is green:** open the most recent
   `airport_ops_lakehouse` run grid — all 11 tasks green. You will **reuse** this
   run (not re-trigger) so the built tables are already populated.
@@ -54,6 +55,10 @@ The Dataform GCP repository and GitHub connection are already deployed;
 `bootstrap.sh` uploads the Composer DAG. Confirm raw data landed:
 
 ```bash
+# RAW_BUCKET is optional in .env and ships blank; the scripts fall back to
+# airport-ops-demo-${PROJECT_NUMBER} internally. Resolve it for your own shell:
+export RAW_BUCKET="${RAW_BUCKET:-airport-ops-demo-$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')}"
+
 gcloud storage ls "gs://${RAW_BUCKET}/raw/"
 ```
 
@@ -459,7 +464,7 @@ SELECT
   protopayload_auditlog.authenticationInfo.principalEmail AS actor,
   protopayload_auditlog.methodName AS method,
   protopayload_auditlog.resourceName AS resource
-FROM `PROJECT.sharing_audit.cloudaudit_googleapis_com_activity`
+FROM `your-project-id.sharing_audit.cloudaudit_googleapis_com_activity`
 WHERE protopayload_auditlog.serviceName = 'analyticshub.googleapis.com'
 ORDER BY timestamp DESC;
 ```
@@ -519,8 +524,13 @@ Trigger the separate manual DAG for a short run:
 ```bash
 gcloud composer environments run "$COMPOSER_ENV" \
   --location="$REGION" dags trigger -- \
-  -r "baggage-stream-demo" airport_ops_baggage_stream_demo
+  --run-id "baggage-stream-$(date +%Y%m%d%H%M%S)" airport_ops_baggage_stream_demo
 ```
+
+> Use a unique run id. A fixed one fails on the second trigger (rehearsal, then
+> live) with a duplicate-DagRun error, and Composer 3 does not support
+> `dags delete-dag-run` to clear it. Note also that Airflow 3 expects
+> `--run-id`; `-r` is Airflow 2 syntax.
 
 Then query the bronze stream table:
 

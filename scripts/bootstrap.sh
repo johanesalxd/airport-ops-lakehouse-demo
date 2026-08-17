@@ -91,6 +91,9 @@ echo ">> Enabling required APIs (no-op if already enabled)"
 # required for Managed Service for Apache Spark lineage emitted by the Spark
 # stored procedures. analyticshub powers the optional data-sharing showcase
 # (scripts/setup_analytics_hub.sh); the subscriber project needs it too.
+# compute is required by the `gcloud compute project-info add-metadata` call
+# below -- it is not enabled by default on every project, and this script runs
+# under `set -euo pipefail`, so omitting it aborts the whole bootstrap.
 gcloud services enable \
   bigquery.googleapis.com bigqueryconnection.googleapis.com \
   dataform.googleapis.com dataproc.googleapis.com \
@@ -98,7 +101,7 @@ gcloud services enable \
   secretmanager.googleapis.com storage.googleapis.com \
   dataplex.googleapis.com datalineage.googleapis.com \
   cloudaicompanion.googleapis.com analyticshub.googleapis.com \
-  pubsub.googleapis.com >/dev/null
+  pubsub.googleapis.com compute.googleapis.com >/dev/null
 
 echo ">> Creating Dataform service account ${DATAFORM_SA}"
 if gcloud iam service-accounts describe "${DATAFORM_SA_EMAIL}" >/dev/null 2>&1; then

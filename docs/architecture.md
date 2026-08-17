@@ -9,7 +9,7 @@ behind the data model (medallion, star schema vs semantic layer), see
 
 | Service | Role in the demo |
 |---|---|
-| **Cloud Storage** | Raw landing zone for the six source files, partitioned `dt=YYYY-MM-DD`. |
+| **Cloud Storage** | Raw landing zone for the six source files, laid out as `raw/<source>/dt=YYYY-MM-DD/`. |
 | **BigQuery** | The lakehouse engine — storage + compute for every layer. |
 | **BigLake** | A governed external table over the columnar Parquet baggage files. |
 | **External table (plain) + BigQuery `JSON` type** | Customer-feedback NDJSON mapped to a single native `JSON` column; bronze reads it as a non-materialised view (deliberate anti-pattern). |

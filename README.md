@@ -60,7 +60,7 @@ Questions the demo answers:
 ```
 6 synthetic sources (CSV, JSONL, Parquet, gz-CSV, nested JSON, multilingual NDJSON)
    │
-   ▼  Cloud Storage raw landing  (dt=YYYY-MM-DD partitions)
+   ▼  Cloud Storage raw landing  (raw/<source>/dt=YYYY-MM-DD partitions)
    │
    ▼  Dataform operations: native loads · external tables (BigLake Parquet +
    ▼                       plain external JSON column) · Spark stored procs
@@ -108,8 +108,8 @@ is the point.
 > 3 (baggage) shows the *good* external-table case: columnar Parquet via BigLake.
 > Gemini enrichment still happens downstream in silver.
 
-All six land in Cloud Storage under `dt=YYYY-MM-DD/` partitions first (seeded by
-`scripts/upload_demo_data.sh`).
+All six land in Cloud Storage under `raw/<source>/dt=YYYY-MM-DD/` partitions
+first (seeded by `scripts/upload_demo_data.sh`).
 
 ### 2. What each orchestration task does
 
@@ -197,9 +197,12 @@ airport-ops-lakehouse-demo/
 
 ## Prerequisites
 
-- A Google Cloud project with BigQuery, Dataform, Dataproc, Data Lineage, Vertex AI,
-  Composer, Secret Manager, Cloud Storage, and (for the optional data-sharing
-  showcase) Analytics Hub APIs enabled (`bootstrap.sh` enables them).
+- A Google Cloud project. `bootstrap.sh` enables every API it needs: BigQuery,
+  BigQuery Connection, Dataform, Dataproc, Vertex AI, Composer, Secret Manager,
+  Cloud Storage, Dataplex, Data Lineage, Gemini for Google Cloud, Analytics Hub
+  (also required in the subscriber project for the optional data-sharing
+  showcase), Pub/Sub, and Compute Engine (needed for the project-wide Dataproc
+  lineage metadata flag).
 - `gcloud` (with the `bq` CLI) authenticated (`gcloud auth application-default
   login`) with rights to create datasets, buckets, service accounts, and IAM
   bindings.

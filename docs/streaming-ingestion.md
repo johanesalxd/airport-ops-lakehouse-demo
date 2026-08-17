@@ -40,7 +40,7 @@ The bronze streaming table is partitioned hourly by `publish_time`, clustered by
 It does not require a partition filter so live demo queries stay simple.
 
 ```sql
-CREATE TABLE IF NOT EXISTS `PROJECT.airport_bronze.brz_baggage_events_stream` (
+CREATE TABLE IF NOT EXISTS `your-project-id.airport_bronze.brz_baggage_events_stream` (
   event_id STRING NOT NULL,
   bag_id STRING NOT NULL,
   flight_id STRING,

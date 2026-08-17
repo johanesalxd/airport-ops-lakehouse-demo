@@ -66,7 +66,7 @@ the DCR variant.
   `AH_PRIMARY_CONTACT` is shown to subscribers in the console as the data owner
   to contact, and is where "Request access" submissions land — use a monitored
   group, not an individual.
-- `bigqueryanalyticshub.googleapis.com` enabled in both projects.
+- `analyticshub.googleapis.com` enabled in both projects.
 
 ### IAM
 
@@ -386,7 +386,7 @@ SELECT
   protopayload_auditlog.authenticationInfo.principalEmail AS actor,
   protopayload_auditlog.methodName AS method,
   protopayload_auditlog.resourceName AS resource
-FROM `PROJECT.sharing_audit.cloudaudit_googleapis_com_activity`
+FROM `your-project-id.sharing_audit.cloudaudit_googleapis_com_activity`
 WHERE protopayload_auditlog.serviceName = 'analyticshub.googleapis.com'
 ORDER BY timestamp DESC;
 ```
