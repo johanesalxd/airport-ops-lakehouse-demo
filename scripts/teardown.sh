@@ -110,6 +110,11 @@ gcloud pubsub schemas delete "${PUBSUB_BAGGAGE_SCHEMA}" --quiet 2>/dev/null \
 # To remove them explicitly, see the BigQuery data policies API / DROP DATA POLICY.
 echo "note: region-scoped staff_*_policy data policies persist (idempotent on rebuild)"
 
+# Note: region-scoped Dataplex DataScan resources (dp-*, doc-*, doc-ds-*, dq-*)
+# persist across dataset teardowns and are updated idempotently on rebuild by
+# scripts/generate_data_insights.sh and scripts/generate_data_quality.sh.
+echo "note: region-scoped Dataplex DataScans persist (idempotent on rebuild)"
+
 echo "kept user-managed Dataform repo"
 
 echo "Teardown done. Shared connections and Composer were left intact."

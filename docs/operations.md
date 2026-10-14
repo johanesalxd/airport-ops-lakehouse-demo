@@ -87,6 +87,14 @@ A re-run is always safe — it converges to the same state, no duplicates:
 - Bronze/silver/gold tables are Dataform `type: "table"` → `CREATE OR REPLACE
   TABLE`; semantic views and the `brz_customer_feedback` bronze view are
   `CREATE OR REPLACE VIEW`.
+- **Knowledge Catalog publishing labels:** Because Dataform rebuilds tables with
+  `CREATE OR REPLACE TABLE`, any custom table labels — including the 9 Knowledge
+  Catalog publish pointers (`dataplex-dp-published-*`,
+  `dataplex-data-documentation-published-*`, and `dataplex-dq-published-*`) — are
+  reset on pipeline re-runs. Re-running
+  `bash scripts/generate_data_insights.sh --dataset-insights` and
+  `bash scripts/generate_data_quality.sh` restores all publishing labels and
+  refreshes profile, documentation, and quality metrics.
 - The synthetic generator is deterministic (fixed seed); upload uses
   `gcloud storage rsync`.
 

@@ -296,6 +296,22 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${BIGLAKE_CONN_SA}" \
   --role="roles/storage.objectViewer" --condition=None >/dev/null
 
+echo ">> Provisioning Dataplex service agent and granting BigQuery scan/export access"
+# The Dataplex service agent runs data profile, data documentation, and auto
+# data quality scans. It needs roles/bigquery.dataViewer to scan silver/gold
+# tables and roles/bigquery.dataEditor to auto-create and write the
+# dq_scan_results export table in the governance dataset. Granted project-wide
+# here for demo simplicity alongside the Dataform SA; in production, scope
+# dataViewer to scanned datasets and dataEditor to DS_GOVERNANCE only.
+gcloud beta services identity create --service=dataplex.googleapis.com \
+  --project="${PROJECT_ID}" >/dev/null
+DATAPLEX_AGENT="service-${PROJECT_NUMBER}@gcp-sa-dataplex.iam.gserviceaccount.com"
+for ROLE in roles/bigquery.dataViewer roles/bigquery.dataEditor; do
+  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${DATAPLEX_AGENT}" --role="${ROLE}" \
+    --condition=None >/dev/null
+done
+
 echo ">> Granting the Dataform service agent token-creator on the execution SA"
 # The Dataform service agent impersonates the execution SA to run workflows.
 DATAFORM_AGENT="service-${PROJECT_NUMBER}@gcp-sa-dataform.iam.gserviceaccount.com"
@@ -374,7 +390,8 @@ echo "                 ${COMPOSER_DAG_GCS_PREFIX}/airport_ops_baggage_stream_dag
 echo "   Raw bucket  : gs://${RAW_BUCKET}"
 echo "   Stream topic: ${PUBSUB_BAGGAGE_TOPIC} -> ${DS_BRONZE}.brz_baggage_events_stream"
 echo
-echo "   NOTE: the optional data-insights script (scripts/generate_data_insights.sh)"
-echo "   runs as YOUR ADC identity, which needs: roles/dataplex.dataScanEditor,"
+echo "   NOTE: the optional data-insights and data-quality scripts"
+echo "   (scripts/generate_data_insights.sh and scripts/generate_data_quality.sh)"
+echo "   run as YOUR ADC identity, which needs: roles/dataplex.dataScanEditor,"
 echo "   roles/bigquery.dataViewer + roles/bigquery.dataEditor, roles/bigquery.user,"
 echo "   and (for catalog publishing) roles/dataplex.catalogEditor + roles/dataplex.entryOwner."

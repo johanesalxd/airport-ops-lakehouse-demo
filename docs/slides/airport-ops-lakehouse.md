@@ -416,6 +416,7 @@ Publisher HUB (owns storage)            Subscriber SPOKE (pays compute)
 - Atomic star schema
 - Semantic roll-up views
 - Assertions + quarantine + DQ summary
+- **Managed DQ (Dataplex AutoDQ) + Profiling**
 - RLS + CLS / masking (governance stage)
 - Optional Pub/Sub baggage stream
 - Composer orchestration + lineage
@@ -425,7 +426,6 @@ Publisher HUB (owns storage)            Subscriber SPOKE (pays compute)
 <div class="pill">
 
 **Roadmap**
-- Managed DQ (Dataplex AutoDQ)
 - Continuous queries for real-time analytics
 - Conversational analytics / data agents
 - Vector search & embeddings
@@ -436,7 +436,7 @@ Publisher HUB (owns storage)            Subscriber SPOKE (pays compute)
 </div>
 </div>
 
-<span class="small">Vs. Google Cloud's lakehouse reference pattern, the optional Pub/Sub stream, governance (RLS/CLS) and cross-organization sharing are now covered; the BI layer, continuous queries, and conversational analytics remain on the roadmap.</span>
+<span class="small">Vs. Google Cloud's lakehouse reference pattern, the optional Pub/Sub stream, governance (RLS/CLS), Dataplex Auto DQ, and cross-organization sharing are now covered; the BI layer, continuous queries, and conversational analytics remain on the roadmap.</span>
 
 ---
 

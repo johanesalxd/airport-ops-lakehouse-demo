@@ -12,7 +12,7 @@ answers your question.
 | [`why-dataform-not-python.md`](why-dataform-not-python.md) | What Dataform *is*, and when to reach for Spark/Python instead. | Anyone new to Dataform |
 | [`demo-script.md`](demo-script.md) | The workshop runbook: pre-flight checklist, minute-by-minute live flow, soundbites, **anticipated Q&A**, teardown. | The presenter |
 | [`operations.md`](operations.md) | Runbook: **where logs live**, Composer 3 CLI caveats, idempotency & re-runs, known issues. | On-call / debugging |
-| [`roadmap.md`](roadmap.md) | What's next (and what's already implemented): governance, streaming, continuous queries, data insights, **CI/CD & dev→prod environments**, public-release prep. | Planning the next iteration |
+| [`roadmap.md`](roadmap.md) | What's next (and what's already implemented): governance, streaming, continuous queries, data insights & managed data quality, **CI/CD & dev→prod environments**, public-release prep. | Planning the next iteration |
 | [`slides/`](slides/) | The Marp workshop deck + [how to build/update it](slides/README.md). | The presenter |
 
 Official Google Cloud documentation is linked **inline** at the point each topic

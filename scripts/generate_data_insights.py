@@ -4,8 +4,8 @@
 Data insights are NOT a SQL/Dataform asset: they are produced by Dataplex
 "DATA_DOCUMENTATION" data scans. For each target this script:
 
-  1. (tables only) creates + runs a DATA_PROFILE scan and publishes it via table
-     labels -> grounds the insights in real values (the docs' recommendation).
+  1. (tables only) creates + runs a DATA_PROFILE scan (catalogPublishingEnabled=true)
+     and publishes it via table labels -> grounds the insights in real values (the docs' recommendation).
   2. creates + runs a DATA_DOCUMENTATION scan (generationScopes=ALL,
      catalogPublishingEnabled=true) -> AI table/column descriptions, suggested
      natural-language questions + SQL, published to Knowledge Catalog.
@@ -20,7 +20,8 @@ Targets (default): silver + gold tables (profile + document) and semantic views
 This is stdlib-only: the access token comes from `gcloud auth print-access-token`,
 HTTP uses urllib, and table labels are set with `bq`. The flow handles the async
 create operation (LRO) and polls the scan job to completion, and is idempotent
-(an already-existing scan is reused, then re-run).
+(an already-existing scan is updated via PATCH ?updateMask=... if an update mask
+is specified, reused, and re-run).
 
 Prerequisites (see scripts/bootstrap.sh):
   - APIs: dataplex.googleapis.com, bigquery.googleapis.com,
@@ -55,7 +56,8 @@ import urllib.request
 
 API_ROOT = "https://dataplex.googleapis.com/v1"
 JOB_POLL_BUDGET_S = 1800  # max seconds to wait for a single scan job
-LRO_POLL_BUDGET_S = 120  # max seconds to wait for a create operation
+LRO_POLL_BUDGET_S = 120  # max seconds to wait for a create/update operation
+LRO_POLL_INTERVAL_S = 3  # separate fast polling for LRO mutations
 POLL_INTERVAL_S = 15
 
 
@@ -110,22 +112,15 @@ class Dataplex:
     def _err(body: dict) -> str:
         return body.get("error", {}).get("message", "") or json.dumps(body)[:200]
 
-    def ensure_scan(self, scan_id: str, spec: dict) -> bool:
-        """Create the scan if absent; reuse on ALREADY_EXISTS. Polls the LRO."""
-        code, body = self._request(
-            "POST", f"{self.base}/dataScans?dataScanId={scan_id}", spec
-        )
-        if code == 409:
-            return True  # already exists -> reuse
-        if code != 200:
-            print(
-                f"      ! create {scan_id} failed (HTTP {code}): {self._err(body)}",
-                file=sys.stderr,
-            )
-            return False
-        # create returns a long-running operation; wait until it is done.
-        op_name = body.get("name", "")
-        if not op_name or body.get("done"):
+    def _poll_lro(self, op_body: dict, action_label: str) -> bool:
+        op_name = op_body.get("name", "")
+        if not op_name or op_body.get("done"):
+            if "error" in op_body:
+                print(
+                    f"      ! {action_label} op error: {self._err(op_body)}",
+                    file=sys.stderr,
+                )
+                return False
             return True
         waited = 0
         while waited < LRO_POLL_BUDGET_S:
@@ -133,28 +128,58 @@ class Dataplex:
             if code == 200 and op.get("done"):
                 if "error" in op:
                     print(
-                        f"      ! create {scan_id} op error: {self._err(op)}",
+                        f"      ! {action_label} op error: {self._err(op)}",
                         file=sys.stderr,
                     )
                     return False
                 return True
-            time.sleep(POLL_INTERVAL_S)
-            waited += POLL_INTERVAL_S
-        # Even if the op poll timed out, the scan usually exists; proceed.
-        return True
+            time.sleep(LRO_POLL_INTERVAL_S)
+            waited += LRO_POLL_INTERVAL_S
+        print(f"      ! {action_label} op timed out after {waited}s", file=sys.stderr)
+        return False
 
-    def run_and_wait(self, scan_id: str, label: str) -> bool:
+    def ensure_scan(
+        self, scan_id: str, spec: dict, update_mask: str | None = None
+    ) -> bool:
+        """Create the scan if absent; update or reuse on ALREADY_EXISTS. Polls the LRO."""
+        code, body = self._request(
+            "POST", f"{self.base}/dataScans?dataScanId={scan_id}", spec
+        )
+        if code == 409:
+            if update_mask is None:
+                return True  # already exists -> reuse
+            patch_code, patch_body = self._request(
+                "PATCH",
+                f"{self.base}/dataScans/{scan_id}?updateMask={update_mask}",
+                spec,
+            )
+            if patch_code != 200:
+                print(
+                    f"      ! update {scan_id} failed (HTTP {patch_code}): {self._err(patch_body)}",
+                    file=sys.stderr,
+                )
+                return False
+            return self._poll_lro(patch_body, f"update {scan_id}")
+        if code != 200:
+            print(
+                f"      ! create {scan_id} failed (HTTP {code}): {self._err(body)}",
+                file=sys.stderr,
+            )
+            return False
+        return self._poll_lro(body, f"create {scan_id}")
+
+    def run_and_wait_job(self, scan_id: str, label: str) -> tuple[bool, dict]:
         code, body = self._request("POST", f"{self.base}/dataScans/{scan_id}:run")
         if code != 200:
             print(
                 f"      ! run {label} failed (HTTP {code}): {self._err(body)}",
                 file=sys.stderr,
             )
-            return False
+            return False, body
         job_name = body.get("job", {}).get("name", "")
         if not job_name:
             print(f"      ! {label}: no job id returned", file=sys.stderr)
-            return False
+            return False, body
         job_id = job_name.rsplit("/", 1)[-1]
         waited = 0
         while waited < JOB_POLL_BUDGET_S:
@@ -164,14 +189,17 @@ class Dataplex:
             state = job.get("state", "") if code == 200 else ""
             if state == "SUCCEEDED":
                 print(f"      ok {label} (job {job_id})")
-                return True
+                return True, job
             if state in ("FAILED", "CANCELLED"):
                 print(f"      ! {label} {state} (job {job_id})", file=sys.stderr)
-                return False
+                return False, job
             time.sleep(POLL_INTERVAL_S)
             waited += POLL_INTERVAL_S
         print(f"      ! {label} timed out after {waited}s", file=sys.stderr)
-        return False
+        return False, {}
+
+    def run_and_wait(self, scan_id: str, label: str) -> bool:
+        return self.run_and_wait_job(scan_id, label)[0]
 
 
 def slug(name: str) -> str:
@@ -272,12 +300,12 @@ def main() -> int:
                 pspec = {
                     "data": {"resource": res},
                     "type": "DATA_PROFILE",
-                    "dataProfileSpec": {},
+                    "dataProfileSpec": {"catalogPublishingEnabled": True},
                     **on_demand,
                 }
-                if dp.ensure_scan(pid, pspec) and dp.run_and_wait(
-                    pid, f"profile {name}"
-                ):
+                if dp.ensure_scan(
+                    pid, pspec, update_mask="dataProfileSpec"
+                ) and dp.run_and_wait(pid, f"profile {name}"):
                     bq_set_labels(
                         f"{project}:{ds}.{name}",
                         {
@@ -303,7 +331,9 @@ def main() -> int:
                 },
                 **on_demand,
             }
-            if dp.ensure_scan(did, dspec) and dp.run_and_wait(did, f"document {name}"):
+            if dp.ensure_scan(
+                did, dspec, update_mask="dataDocumentationSpec"
+            ) and dp.run_and_wait(did, f"document {name}"):
                 if is_table:
                     bq_set_labels(
                         f"{project}:{ds}.{name}",
@@ -327,7 +357,9 @@ def main() -> int:
                 "dataDocumentationSpec": {"catalogPublishingEnabled": True},
                 **on_demand,
             }
-            if dp.ensure_scan(dsid, dsspec) and dp.run_and_wait(dsid, f"dataset {ds}"):
+            if dp.ensure_scan(
+                dsid, dsspec, update_mask="dataDocumentationSpec"
+            ) and dp.run_and_wait(dsid, f"dataset {ds}"):
                 documented += 1
             else:
                 failed += 1

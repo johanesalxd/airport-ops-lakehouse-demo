@@ -22,6 +22,11 @@ official Google Cloud documentation linked inline.
   subscription, bronze stream table, and silver dedupe view.
 - **Automated metadata:** optional data-insights script over silver, gold, and
   semantic objects.
+- **Managed data quality (Dataplex Auto DQ):** automated Dataplex data quality scans
+  on gold fact tables (`dq-fct-*`), profile-based rule recommendations
+  (`:generateDataQualityRules`), BigQuery results export
+  (`${DS_GOVERNANCE}.dq_scan_results`), and Knowledge Catalog publishing via
+  `scripts/generate_data_quality.sh`.
 - **Data sharing (Analytics Hub):** curated `shr_*` authorized views published as
   a private Data Exchange listing with per-listing subscriber whitelisting and a
   cost-isolated subscriber (spoke) flow. See §9 and
@@ -73,18 +78,19 @@ Still open as future extensions:
 
 ### Managed data quality (Dataplex auto data quality + profiling)
 
+**Implemented** via [`scripts/generate_data_quality.sh`](../scripts/generate_data_quality.sh).
 Today data quality is enforced *in-pipeline* with Dataform assertions (real gates
-in the `quality` stage). Complement — don't replace — that with **managed,
-scheduled** quality as a platform capability:
+in the `quality` stage) and complemented with **managed Dataplex Auto Data Quality**
+as a platform governance capability:
 
-- Run a **data profiling scan** on the gold tables, then use the
-  profile to **recommend data-quality rules** (`generateDataQualityRules`).
-- Schedule a **data quality scan** (Dataplex/Knowledge Catalog) with those rules,
-  publish scores to the BigQuery/Knowledge Catalog metadata pages, and alert on
-  failures.
-
-This gives a governance team owned, catalog-visible DQ on top of the developer's
-in-graph assertions.
+- Runs **data profiling scans** (`dp-*`) on gold tables, then queries
+  profile-based **data-quality rule recommendations** (`:generateDataQualityRules`).
+- Configures curated **data quality scans** (`dq-*`) for `fct_flight`, `fct_baggage`,
+  and `fct_feedback` with catalog publishing and BigQuery export to
+  `${DS_GOVERNANCE}.dq_scan_results`.
+- Catches the planted baggage missing load scan anomaly (~91.25% pass ratio) while
+  keeping flights and feedback at 100% pass score, publishing quality indicators
+  directly to BigQuery Studio and Knowledge Catalog.
 
 ## 2. Streaming ingestion: baggage events via Pub/Sub
 
@@ -138,7 +144,7 @@ auto-generate metadata over the built layers:
 
 ```
 for each table in silver + gold:
-  → run a DATA_PROFILE scan + publish it (grounds the insights)
+  → run a DATA_PROFILE scan (catalogPublishingEnabled) + publish table labels (grounds the insights)
   → run a DATA_DOCUMENTATION scan (generationScopes=ALL, catalogPublishingEnabled)
   → publish table/column descriptions + suggested questions/SQL to Knowledge Catalog
 for each view in semantic:

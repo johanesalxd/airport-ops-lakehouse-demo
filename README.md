@@ -167,6 +167,8 @@ airport-ops-lakehouse-demo/
     generate_demo_data.py           # deterministic 6-source synthetic generator
     generate_data_insights.py       # Dataplex data-insights scans (impl)
     generate_data_insights.sh       # thin wrapper for the data-insights script
+    generate_data_quality.py        # Dataplex Auto Data Quality scans (impl)
+    generate_data_quality.sh        # thin wrapper for the data-quality script
     bootstrap.sh                    # datasets, bucket, SA, IAM, Composer DAG upload
     upload_demo_data.sh             # generate + upload to GCS
     setup_analytics_hub.py/.sh      # publisher: publish airport_share via Analytics Hub
@@ -205,7 +207,8 @@ airport-ops-lakehouse-demo/
   lineage metadata flag).
 - `gcloud` (with the `bq` CLI) authenticated (`gcloud auth application-default
   login`) with rights to create datasets, buckets, service accounts, and IAM
-  bindings.
+  bindings. Ensure the `beta` component is installed (`gcloud components install beta`),
+  used by `scripts/bootstrap.sh` to provision the Dataplex service identity.
 - **Two Google Groups must already exist** for the RLS/CLS `security` stage:
   `bq-rls-cls-dataform-admin@<domain>` and `bq-rls-cls-dataform-sales@<domain>`.
   `bootstrap.sh` grants them `bigquery.jobUser` only — deliberately *not* a read
@@ -228,8 +231,9 @@ airport-ops-lakehouse-demo/
   compile). To build the slide deck, see [`docs/slides/README.md`](docs/slides/README.md).
 - `bootstrap.sh` also creates the `airport_governance` dataset and grants the
   Dataform service account the RLS/CLS policy-creation roles.
-- The optional data-insights script (`scripts/generate_data_insights.sh`) runs as
-  **your** ADC identity and needs extra roles: `roles/dataplex.dataScanEditor`,
+- The optional data-insights and data-quality scripts
+  (`scripts/generate_data_insights.sh` and `scripts/generate_data_quality.sh`) run as
+  **your** ADC identity and need extra roles: `roles/dataplex.dataScanEditor`,
   `roles/bigquery.dataViewer` + `roles/bigquery.dataEditor`, `roles/bigquery.user`
   (and for catalog publishing, `roles/dataplex.catalogEditor` +
   `roles/dataplex.entryOwner`).
@@ -314,10 +318,13 @@ bash scripts/setup_analytics_hub.sh          # publisher: exchange + listing + w
 bash scripts/subscribe_analytics_hub.sh      # subscriber: linked dataset + cost-isolated query
 bash scripts/manage_subscriptions.sh --list  # publisher: who has subscribed (governance)
 
-# 5. (Optional) Auto-generate BigQuery data insights — AI descriptions, suggested
-#    questions + SQL, and a dataset relationship graph — over the built layers:
-bash scripts/generate_data_insights.sh                 # silver + gold + semantic
-bash scripts/generate_data_insights.sh --dataset-insights   # + relationship graph
+# 5. (Optional) Auto-generate BigQuery data insights & managed data quality:
+#    AI descriptions, suggested questions + SQL, dataset relationship graph, and
+#    Dataplex Auto Data Quality scans with Knowledge Catalog publishing:
+bash scripts/generate_data_insights.sh --dataset-insights   # profile + insights + relationship graph
+bash scripts/generate_data_quality.sh                      # auto data quality + governance export
+# (Running these after the pipeline finishes attaches all 9 Knowledge Catalog
+# publishing labels on each gold fact table: 3 profile + 3 documentation + 3 quality = 27 total across fct_flight, fct_baggage, and fct_feedback).
 ```
 
 Then explore results in BigQuery (the semantic views in `airport_semantic`, the
@@ -337,7 +344,7 @@ Gemini enrichment in `airport_silver.slv_customer_feedback_enriched`, and
 | AI enrichment | Gemini remote model + `AI.GENERATE_TEXT` on multilingual feedback |
 | Data modelling | atomic conformed star schema (3 dims, 3 facts) |
 | Semantic layer | 3 BigQuery roll-up views |
-| Data quality | built-in + manual assertions, quarantine, quality summary |
+| Data quality | built-in + manual assertions, quarantine, quality summary, Dataplex Auto DQ (`dq-*` scans, profile-based rule recommendations (preview / --recommend-only), and BigQuery results export) |
 | Orchestration | Composer DAG driving Dataform by stage/tag |
 | Streaming ingestion showcase | manual Composer DAG → Pub/Sub schema/topic → BigQuery subscription → bronze stream table + silver dedupe view |
 | Lineage | BigQuery / Dataplex lineage from raw → gold |
@@ -355,13 +362,13 @@ published as a private Data Exchange listing, per-listing subscriber
 whitelisting, and a cost-isolated subscriber (spoke) flow. See
 [`docs/data-sharing.md`](docs/data-sharing.md).
 
-**Not covered (intentionally — see the roadmap):** managed data quality
-(Dataplex auto DQ), BigQuery continuous queries, conversational analytics / data agents, vector
-search & embeddings, an Iceberg open-table-format variant, a BI dashboard, the
-privacy-preserving **Data Clean Room** variant of data sharing, and Dataform
-CI/CD environments. These are documented as next steps in
-[`docs/roadmap.md`](docs/roadmap.md). **Automated BigQuery data insights** is
-available as an optional script (see [*How to run*](#how-to-run) above).
+**Not covered (intentionally — see the roadmap):** BigQuery continuous queries,
+conversational analytics / data agents, vector search & embeddings, an Iceberg
+open-table-format variant, a BI dashboard, the privacy-preserving **Data Clean
+Room** variant of data sharing, and Dataform CI/CD environments. These are
+documented as next steps in [`docs/roadmap.md`](docs/roadmap.md). **Automated
+BigQuery data insights** and **managed data quality** are available as optional
+scripts (see [*How to run*](#how-to-run) above).
 
 > Measured against Google Cloud's
 > [end-to-end data integration](https://cloud.google.com/use-cases/data-integration)

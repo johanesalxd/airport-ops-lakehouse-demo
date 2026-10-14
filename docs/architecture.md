@@ -263,6 +263,12 @@ them from the BigQuery connection details pane or with `bq show --connection`.
   dead-letter topic.
 - **Composer worker SA**: `dataform.admin` on the project + `serviceAccountUser`
   on the Dataform execution SA (so it can run workflow invocations).
+- **Dataplex service agent** (`service-<PROJECT_NUMBER>@gcp-sa-dataplex.iam.gserviceaccount.com`):
+  `bigquery.dataViewer` and `bigquery.dataEditor` (provisioned via
+  `gcloud beta services identity create --service=dataplex.googleapis.com`;
+  reads silver/gold tables during profile, documentation, and quality scans,
+  and auto-creates/writes the `dq_scan_results` export table in the governance
+  dataset).
 - **Governance Google Groups**: `bigquery.jobUser` only. Row access is granted
   by the `ROW ACCESS POLICY` grantee list and column access by
   `GRANT FINE_GRAINED_READ`, both issued by Dataform in the `security` stage —
