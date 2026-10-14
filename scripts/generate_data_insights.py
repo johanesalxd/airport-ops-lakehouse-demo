@@ -360,6 +360,14 @@ def main() -> int:
             if dp.ensure_scan(
                 dsid, dsspec, update_mask="dataDocumentationSpec"
             ) and dp.run_and_wait(dsid, f"dataset {ds}"):
+                bq_set_labels(
+                    f"{project}:{ds}",
+                    {
+                        "dataplex-data-documentation-published-scan": dsid,
+                        "dataplex-data-documentation-published-project": project,
+                        "dataplex-data-documentation-published-location": location,
+                    },
+                )
                 documented += 1
             else:
                 failed += 1
